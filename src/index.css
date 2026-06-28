@@ -1,0 +1,148 @@
+@import "tailwindcss";
+
+/* ─── Google Fonts ───────────────────────────────────────────────────────── */
+/* (loaded via <link> in index.html — just declaring family here) */
+
+/* ─── Tailwind v4 theme tokens ──────────────────────────────────────────── */
+@theme {
+  --color-space:       #020611;
+  --color-cyan-glow:   #00eaff;
+  --color-green-glow:  #00e6a8;
+  --color-red-alert:   #ff4159;
+  --color-amber-warn:  #ffb72b;
+
+  --font-family-sans: 'Inter', system-ui, -apple-system, sans-serif;
+
+  --animate-pulse-ring:   pulseRing   2.4s ease-out infinite;
+  --animate-pulse-ring-2: pulseRing   2.4s ease-out infinite 0.75s;
+  --animate-ticker:       ticker      60s  linear   infinite;
+  --animate-spin-slow:    spinSlow    12s  linear   infinite;
+  --animate-float:        float       6s   ease-in-out infinite;
+}
+
+/* ─── Base reset ─────────────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; }
+
+html, body, #root {
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+  background: #020611;
+  color: #f7faff;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  color-scheme: dark;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ─── Keyframes ──────────────────────────────────────────────────────────── */
+@keyframes pulseRing {
+  0%   { transform: translate(-50%, -50%) scale(0.6); opacity: 0.9; }
+  100% { transform: translate(-50%, -50%) scale(2.2); opacity: 0; }
+}
+
+@keyframes pulseRingHotspot {
+  0%   { transform: translate(-50%,-50%) scale(0.6); opacity: 0.9; }
+  100% { transform: translate(-50%,-50%) scale(2.2); opacity: 0; }
+}
+
+@keyframes ticker {
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(-33.333%); }
+}
+
+@keyframes spinSlow {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50%       { transform: translateY(-6px); }
+}
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position:  200% 0; }
+}
+
+@keyframes cycloneSpin {
+  to { transform: rotate(360deg); }
+}
+
+/* ─── Globe canvas ──────────────────────────────────────────────────────── */
+.globe-container canvas { outline: none; }
+
+/* ─── Custom scrollbar ──────────────────────────────────────────────────── */
+.custom-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255,255,255,0.12) transparent;
+}
+.custom-scroll::-webkit-scrollbar { width: 4px; }
+.custom-scroll::-webkit-scrollbar-track { background: transparent; }
+.custom-scroll::-webkit-scrollbar-thumb {
+  background: rgba(255,255,255,0.12);
+  border-radius: 2px;
+}
+.custom-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(255,255,255,0.22);
+}
+
+/* Hide scrollbar completely on signals nav */
+.scrollbar-none::-webkit-scrollbar { display: none; }
+.scrollbar-none { scrollbar-width: none; }
+
+/* ─── Range input global style ──────────────────────────────────────────── */
+input[type='range'] {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 6px;
+  border-radius: 99px;
+  outline: none;
+  cursor: pointer;
+}
+input[type='range']::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #fff;
+  border: 2px solid rgba(255,255,255,0.3);
+  box-shadow: 0 0 8px rgba(0,0,0,0.5);
+  cursor: grab;
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+input[type='range']::-webkit-slider-thumb:active {
+  cursor: grabbing;
+  transform: scale(1.25);
+  box-shadow: 0 0 14px rgba(0,0,0,0.7);
+}
+input[type='range']::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #fff;
+  border: 2px solid rgba(255,255,255,0.3);
+  cursor: grab;
+}
+
+/* ─── Recharts overrides ────────────────────────────────────────────────── */
+.recharts-text                       { fill: #9cabbe !important; }
+.recharts-cartesian-axis-line        { stroke: rgba(255,255,255,0.08) !important; }
+.recharts-cartesian-grid-horizontal line,
+.recharts-cartesian-grid-vertical   line { stroke: rgba(255,255,255,0.06) !important; }
+.recharts-tooltip-wrapper            { z-index: 999 !important; }
+
+/* ─── Glassmorphism utility ─────────────────────────────────────────────── */
+.glass {
+  background: rgba(11,18,32,0.80);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255,255,255,0.10);
+  border-radius: 1rem;
+}
