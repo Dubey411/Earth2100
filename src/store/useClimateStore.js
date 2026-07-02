@@ -34,10 +34,13 @@ const useClimateStore = create((set, get) => ({
   flyTo: (lat, lng, altitude = 2.0) => set({ flyTarget: { lat, lng, altitude } }),
   clearFlyTarget: () => set({ flyTarget: null }),
 
+  // ✅ FIXED: Properly toggle signals (add/remove)
   toggleSignal: (id) => set((s) => {
-    const next = new Set();
-    if (!s.activeSignals.has(id)) {
-      next.add(id);
+    const next = new Set(s.activeSignals); // Copy existing Set
+    if (next.has(id)) {
+      next.delete(id); // Remove if already active
+    } else {
+      next.add(id); // Add if not active
     }
     return { activeSignals: next };
   }),
