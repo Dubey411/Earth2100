@@ -147,18 +147,19 @@
 
 
 
-
 import * as THREE from 'three'
 import { CLOUD_IMG, CONTROL_SETTINGS, EARTH_NIGHT } from './globeConstants.js'
 import { HEAT_FRAGMENT, HEAT_VERTEX } from './heatShader.js'
 
 // Cache geometries for reuse
+// react-globe.gl renders the Earth at radius ~100 Three.js units.
+// All overlay spheres must be LARGER than 100 to sit on top of it.
 const sharedGeometries = {
-  sphere: new THREE.SphereGeometry(1, 64, 64),
-  sphereHigh: new THREE.SphereGeometry(1, 160, 160),
-  sphereCloud: new THREE.SphereGeometry(1.022, 64, 64),
-  sphereNight: new THREE.SphereGeometry(1.012, 64, 64),
-  sphereAtmosphere: new THREE.SphereGeometry(1.035, 48, 48),
+  sphere:           new THREE.SphereGeometry(100.0,  64,  64),
+  sphereHigh:       new THREE.SphereGeometry(100.6,  160, 160), // heat overlay
+  sphereCloud:      new THREE.SphereGeometry(102.2,  64,  64),  // cloud layer
+  sphereNight:      new THREE.SphereGeometry(101.2,  64,  64),  // night lights
+  sphereAtmosphere: new THREE.SphereGeometry(103.5,  48,  48),  // glow shell
 }
 
 // Animation state
@@ -349,46 +350,53 @@ export function addCloudLayer(scene, loader) {
 }
 
 // ============================================================
-// HEAT LAYER - UPDATED WITH CLOUD SYNC
+// HEAT LAYER
 // ============================================================
 
-export function createHeatLayer(scene, maskTexture) {
+export function createHeatLayer(scene) {
+  // Create the material — NormalBlending with depthWrite:false renders clean overlays
   const material = new THREE.ShaderMaterial({
-    vertexShader: HEAT_VERTEX,
+    vertexShader:   HEAT_VERTEX,
     fragmentShader: HEAT_FRAGMENT,
     uniforms: {
-      uTime: { value: 0.0 },
-      uIntensity: { value: 0.0 },
-      uZoom: { value: 0.0 },
-      uMaskTex: { value: maskTexture },
+      uTime:      { value: 0.0 },
+      uIntensity: { value: 1.0 },
     },
     transparent: true,
-    depthWrite: false,
-    blending: THREE.NormalBlending,
-    side: THREE.DoubleSide,
-    extensions: {
-      derivatives: true,
-    },
+    depthWrite:  false,
+    depthTest:   true,
+    blending:    THREE.NormalBlending,
+    side:        THREE.DoubleSide,
   })
 
-  const mesh = new THREE.Mesh(
-    sharedGeometries.sphereHigh,
-    material
-  )
-  mesh.visible = false
-  mesh.frustumCulled = true
+  // Radius is 1.006 (just above 1.0 Earth, below 1.012 night lights)
+  const geometry = new THREE.SphereGeometry(1.006, 160, 160)
+  const mesh = new THREE.Mesh(geometry, material)
+
+  mesh.visible       = false
+  mesh.frustumCulled = false
+  mesh.renderOrder   = 5         // Render after Earth (0) but before clouds
+
   scene.add(mesh)
+  console.log('🔥 Heat mesh added to scene at radius 1.006, renderOrder 5')
 
   return {
     mesh,
     dispose: () => {
-      disposeMesh(scene, mesh)
+      scene.remove(mesh)
+      geometry.dispose()
+      material.dispose()
     },
   }
 }
 
+export function updateHeatLayer({ heatMesh, t }) {
+  if (!heatMesh?.visible) return
+  heatMesh.material.uniforms.uTime.value = t
+}
+
 // ============================================================
-// UPDATED UPDATE FUNCTIONS WITH THROTTLING
+// UPDATE FUNCTIONS
 // ============================================================
 
 export function updateCloudLayer({ cloudMesh, time, cameraDistance }) {
@@ -432,32 +440,7 @@ export function updateNightLights({ scene, time }) {
   })
 }
 
-export function updateHeatLayer({ heatMesh, t, cameraDistance, cloudRotation }) {
-  if (!heatMesh?.visible) return
-  
-  const now = performance.now()
-  if (now - lastHeatUpdate < UPDATE_INTERVAL) return
-  lastHeatUpdate = now
 
-  const uniforms = heatMesh.material.uniforms
-  
-  // SYNC WITH CLOUDS: Heat moves with cloud rotation
-  const syncedTime = t + cloudRotation * 8.0
-  if (uniforms.uTime.value !== syncedTime) {
-    uniforms.uTime.value = syncedTime
-  }
-
-  // Scale animation
-  const scale = 1.01 + 0.01 * Math.sin(t * 1.2566)
-  if (heatMesh.scale.x !== scale) {
-    heatMesh.scale.set(scale, scale, scale)
-  }
-
-  const zoom = THREE.MathUtils.clamp((450 - cameraDistance) / 270, 0, 1)
-  if (uniforms.uZoom.value !== zoom) {
-    uniforms.uZoom.value = zoom
-  }
-}
 
 // ============================================================
 // DISPOSAL FUNCTIONS
@@ -505,7 +488,6 @@ function disposeMaterial(material) {
   material.dispose()
 }
 
-// Export controls
 export function setCloudRotationSpeed(speed) {
   cloudRotationSpeed = speed
 }
