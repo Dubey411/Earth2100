@@ -1,158 +1,174 @@
-export const HEAT_VERTEX = `
-  varying vec3 vPos3D;
+/**
+ * heatShader.js — Full-globe NASA thermal overlay for Earth 2100
+ *
+ * Every pixel of the globe is coloured:
+ *   deep blue/purple → cold poles
+ *   cyan/teal        → cool mid-latitude ocean
+ *   green/yellow     → warm tropical belt
+ *   orange/red       → hot continental interiors & desert belts
+ *
+ * AdditiveBlending: colours glow on top of the Earth texture.
+ * Minimum brightness = 0.18 × uIntensity so even the coldest pole
+ * shows a dark-blue tint rather than being invisible.
+ */
+
+// ── Vertex shader ──────────────────────────────────────────────────────────────
+export const HEAT_VERTEX = /* glsl */`
   varying vec2 vUv;
+  varying vec3 vViewNormal;
+
   void main() {
-    vUv    = uv;
-    vPos3D = normalize(position);
+    vUv         = uv;
+    vViewNormal = normalize(normalMatrix * normal);
     gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
   }
 `
 
-export const HEAT_FRAGMENT = `
+// ── Fragment shader ────────────────────────────────────────────────────────────
+export const HEAT_FRAGMENT = /* glsl */`
+  precision mediump float;
+
   uniform float uTime;
   uniform float uIntensity;
-  varying vec3 vPos3D;
-  varying vec2 vUv;
 
-  // ============================================================
-  // TEMPERATURE CALCULATION - NASA/GOES Style
-  // ============================================================
-  
-  float getTemperature(float lat, float lng, float time) {
+  varying vec2  vUv;
+  varying vec3  vViewNormal;
+
+  // ── Gaussian blob helper ─────────────────────────────────────────────────────
+  // Returns 0..1, centred at (cLat, cLng) with half-widths sLat, sLng (degrees)
+  float gauss(float lat, float lng, float cLat, float cLng, float sLat, float sLng) {
+    float dlat = (lat - cLat) / sLat;
+    float dlng = (lng - cLng) / sLng;
+    return exp(-(dlat * dlat + dlng * dlng));
+  }
+
+  // ── Simple 2-D value noise ───────────────────────────────────────────────────
+  float hash(vec2 p) {
+    p = fract(p * vec2(127.1, 311.7));
+    p += dot(p, p + 19.19);
+    return fract(p.x * p.y);
+  }
+  float vnoise(vec2 p) {
+    vec2 i = floor(p); vec2 f = fract(p);
+    f = f * f * (3.0 - 2.0 * f);
+    return mix(mix(hash(i), hash(i+vec2(1,0)), f.x),
+               mix(hash(i+vec2(0,1)), hash(i+vec2(1,1)), f.x), f.y);
+  }
+  float fbm(vec2 p) {
+    float v = 0.0, a = 0.5;
+    for (int i = 0; i < 3; i++) { v += a * vnoise(p); p = p*2.1+vec2(3.7,8.3); a*=0.5; }
+    return v;
+  }
+
+  // ── Temperature model ────────────────────────────────────────────────────────
+  float getTemp(float lat, float lng, float t) {
+
+    // 1. Latitudinal solar insolation (1.0 equator → 0.0 poles)
+    float solar = pow(max(0.0, cos(lat * 3.14159265 / 180.0)), 1.3);
+
+    // 2. Polar ice caps (hard suppression above ~65°)
     float absLat = abs(lat);
-    
-    // 1. Base latitudinal gradient (equator warm, poles cold)
-    float temp = cos(lat * 3.14159265 / 180.0);
-    temp = temp * 0.7 + 0.3;
-    
-    // 2. Seasonal variation
-    float season = sin(time * 0.0172 + lat * 0.01) * 0.08;
-    temp += season;
-    
-    // 3. Regional Hotspots (NASA-style heat domes)
-    
-    // Sahara Desert (23°N, 10°E)
-    float sahara = exp(-pow((lat - 23.0) / 10.0, 2.0) - pow((lng - 10.0) / 15.0, 2.0));
-    temp += sahara * 0.28;
-    
-    // Arabian Peninsula (25°N, 45°E)
-    float arabia = exp(-pow((lat - 25.0) / 8.0, 2.0) - pow((lng - 45.0) / 10.0, 2.0));
-    temp += arabia * 0.25;
-    
-    // Amazon Rainforest (5°S, 60°W)
-    float amazon = exp(-pow((lat + 5.0) / 12.0, 2.0) - pow((lng + 60.0) / 15.0, 2.0));
-    temp += amazon * 0.18;
-    
-    // North America (35°N, 100°W)
-    float na = exp(-pow((lat - 35.0) / 12.0, 2.0) - pow((lng + 100.0) / 18.0, 2.0));
-    temp += na * 0.22;
-    
-    // Europe (45°N, 10°E)
-    float europe = exp(-pow((lat - 45.0) / 8.0, 2.0) - pow((lng - 10.0) / 12.0, 2.0));
-    temp += europe * 0.18;
-    
-    // Southeast Asia (0°N, 115°E)
-    float sea = exp(-pow((lat - 0.0) / 10.0, 2.0) - pow((lng - 115.0) / 18.0, 2.0));
-    temp += sea * 0.20;
-    
-    // Australia (25°S, 135°E)
-    float australia = exp(-pow((lat + 25.0) / 10.0, 2.0) - pow((lng - 135.0) / 15.0, 2.0));
-    temp += australia * 0.22;
-    
-    // India (20°N, 78°E)
-    float india = exp(-pow((lat - 20.0) / 8.0, 2.0) - pow((lng - 78.0) / 10.0, 2.0));
-    temp += india * 0.20;
-    
-    // China (35°N, 105°E)
-    float china = exp(-pow((lat - 35.0) / 10.0, 2.0) - pow((lng - 105.0) / 15.0, 2.0));
-    temp += china * 0.18;
-    
-    // 4. Ocean currents (Gulf Stream, Kuroshio)
-    
-    // Gulf Stream (warm)
-    float gulf = exp(-pow((lat - 30.0) / 8.0, 2.0) - pow((lng + 75.0) / 10.0, 2.0));
-    temp += gulf * 0.15;
-    
-    // Kuroshio (warm)
-    float kuro = exp(-pow((lat - 30.0) / 8.0, 2.0) - pow((lng - 135.0) / 10.0, 2.0));
-    temp += kuro * 0.12;
-    
-    // Humboldt (cold)
-    float humboldt = exp(-pow((lat + 15.0) / 10.0, 2.0) - pow((lng + 80.0) / 12.0, 2.0));
-    temp -= humboldt * 0.10;
-    
-    // Benguela (cold)
-    float benguela = exp(-pow((lat + 25.0) / 10.0, 2.0) - pow((lng + 15.0) / 10.0, 2.0));
-    temp -= benguela * 0.08;
-    
-    // 5. ENSO effect (El Niño/La Niña)
-    if (absLat < 20.0 && abs(lng + 150.0) < 30.0) {
-      float enso = exp(-pow((lat - 0.0) / 10.0, 2.0) - pow((lng + 150.0) / 20.0, 2.0));
-      float phase = sin(time * 0.008) * 0.5 + 0.5;
-      temp += enso * phase * 0.15;
-    }
-    
-    // 6. Small noise for natural variation
-    float noise = sin(lat * 15.0 + lng * 20.0 + time * 0.5) * 0.02;
-    temp += noise;
-    
-    return clamp(temp, 0.0, 1.0);
+    float ice    = smoothstep(62.0, 82.0, absLat) * 0.70;
+
+    float base   = clamp(solar - ice, 0.0, 1.0);
+
+    // ── 3. CONTINENT HEAT BLOBS ──────────────────────────────────────────────
+    // Large sigmas (20-35°) → broad warm zones, not sharp outlines.
+    // Land warms faster than ocean → boosted up to +0.35 above base.
+
+    float land = 0.0;
+
+    // North America interior
+    land += 0.30 * gauss(lat, lng,  42.0, -100.0, 22.0, 28.0);
+    // Central America / Caribbean
+    land += 0.22 * gauss(lat, lng,  17.0,  -88.0, 12.0, 14.0);
+    // South America (Amazon + Chaco)
+    land += 0.28 * gauss(lat, lng,  -8.0,  -58.0, 22.0, 22.0);
+    // Sahara / North Africa (hottest desert on Earth)
+    land += 0.42 * gauss(lat, lng,  22.0,   15.0, 16.0, 28.0);
+    // Arabian Peninsula
+    land += 0.38 * gauss(lat, lng,  24.0,   47.0, 12.0, 14.0);
+    // Sub-Saharan Africa
+    land += 0.28 * gauss(lat, lng,   5.0,   25.0, 22.0, 22.0);
+    // Europe
+    land += 0.20 * gauss(lat, lng,  50.0,   12.0, 18.0, 22.0);
+    // South Asia (India subcontinent)
+    land += 0.35 * gauss(lat, lng,  22.0,   78.0, 14.0, 14.0);
+    // East/Central Asia
+    land += 0.25 * gauss(lat, lng,  45.0,  100.0, 22.0, 35.0);
+    // Southeast Asia
+    land += 0.28 * gauss(lat, lng,   5.0,  112.0, 16.0, 18.0);
+    // Australia interior (among world's hottest)
+    land += 0.38 * gauss(lat, lng, -25.0,  134.0, 16.0, 20.0);
+    // Central Africa
+    land += 0.25 * gauss(lat, lng,   2.0,   22.0, 18.0, 18.0);
+
+    // ── 4. Ocean warmth (weaker than land) ───────────────────────────────────
+    float ocean = 0.0;
+    ocean += 0.12 * gauss(lat, lng,  30.0,  -72.0, 10.0, 12.0); // Gulf Stream
+    ocean += 0.10 * gauss(lat, lng,  30.0,  142.0, 10.0, 12.0); // Kuroshio
+
+    // ── 5. Cold currents ─────────────────────────────────────────────────────
+    float cold = 0.0;
+    cold += 0.12 * gauss(lat, lng, -15.0,  -80.0, 12.0, 12.0); // Humboldt
+    cold += 0.10 * gauss(lat, lng, -25.0,  -13.0, 12.0, 12.0); // Benguela
+
+    // ── 6. Slow mesoscale noise drift ────────────────────────────────────────
+    float drift = fbm(vec2(
+      vUv.x * 4.0 + t * 0.010,
+      vUv.y * 3.5 + t * 0.008
+    )) * 0.12 - 0.04;
+
+    float temp = clamp(base + land + ocean - cold + drift, 0.0, 1.0);
+    return temp;
   }
 
-  // ============================================================
-  // NASA THERMAL PALETTE - 10 Colors
-  // ============================================================
-  vec3 thermalPalette(float t) {
-    float s = clamp(t, 0.0, 1.0);
-    
-    // 10-color NASA/GOES thermal palette
-    vec3 colors[10];
-    colors[0] = vec3(0.00, 0.00, 0.60);  // Very cold (deep blue)
-    colors[1] = vec3(0.00, 0.15, 0.95);  // Cold (bright blue)
-    colors[2] = vec3(0.00, 0.60, 0.95);  // Cool (light blue)
-    colors[3] = vec3(0.00, 0.85, 0.85);  // Moderate (cyan)
-    colors[4] = vec3(0.00, 0.90, 0.40);  // Warm (green)
-    colors[5] = vec3(0.60, 0.95, 0.00);  // Warmer (yellow-green)
-    colors[6] = vec3(0.95, 0.95, 0.00);  // Hot (yellow)
-    colors[7] = vec3(0.95, 0.60, 0.00);  // Very hot (orange)
-    colors[8] = vec3(0.90, 0.20, 0.00);  // Extreme (red)
-    colors[9] = vec3(0.70, 0.00, 0.00);  // Critical (dark red)
-    
-    float p = s * 9.0;
-    float idx = floor(p);
-    float frac = p - idx;
-    
-    // Smooth Hermite interpolation
-    frac = frac * frac * (3.0 - 2.0 * frac);
-    
-    int i0 = int(idx);
-    int i1 = min(i0 + 1, 9);
-    
-    return mix(colors[i0], colors[i1], frac);
+  // ── NASA rainbow palette (8 stops, WebGL-safe if-chain) ─────────────────────
+  // cold: deep navy → blue → cyan → green → yellow-green → yellow → orange → red :hot
+  vec3 palette(float s) {
+    s = clamp(s, 0.0, 1.0);
+    vec3 c0 = vec3(0.05, 0.02, 0.50);  // deep navy  (polar cold)
+    vec3 c1 = vec3(0.00, 0.22, 1.00);  // cobalt blue
+    vec3 c2 = vec3(0.00, 0.72, 0.95);  // cyan
+    vec3 c3 = vec3(0.00, 0.90, 0.65);  // teal-green
+    vec3 c4 = vec3(0.45, 0.95, 0.00);  // yellow-green
+    vec3 c5 = vec3(1.00, 0.92, 0.00);  // yellow
+    vec3 c6 = vec3(1.00, 0.40, 0.00);  // orange
+    vec3 c7 = vec3(0.92, 0.00, 0.00);  // red        (desert hot)
+
+    float t7  = s * 7.0;
+    float seg = floor(t7);
+    float f   = t7 - seg;
+    f = f * f * (3.0 - 2.0 * f);   // smooth Hermite
+
+    vec3 col = c7;
+    if      (seg < 1.0) col = mix(c0, c1, f);
+    else if (seg < 2.0) col = mix(c1, c2, f);
+    else if (seg < 3.0) col = mix(c2, c3, f);
+    else if (seg < 4.0) col = mix(c3, c4, f);
+    else if (seg < 5.0) col = mix(c4, c5, f);
+    else if (seg < 6.0) col = mix(c5, c6, f);
+    else                col = mix(c6, c7, f);
+    return col;
   }
 
-  // ============================================================
-  // MAIN FRAGMENT SHADER
-  // ============================================================
+  // ── Main ─────────────────────────────────────────────────────────────────────
   void main() {
-    // Convert UV to lat/lng
-    float lng = (vUv.x - 0.5) * 360.0;
     float lat = (0.5 - vUv.y) * 180.0;
-    
-    // Calculate temperature
-    float temp = getTemperature(lat, lng, uTime);
-    
-    // Apply intensity
-    float scaledTemp = temp * uIntensity;
-    
-    // Get color from NASA palette
-    vec3 color = thermalPalette(scaledTemp);
-    
-    // Alpha - high opacity, slight polar fade
-    float absLat = abs(lat);
-    float alpha = 0.85 * uIntensity * mix(1.0, 0.7, absLat / 90.0);
-    
-    // Final output
-    gl_FragColor = vec4(color, alpha);
+    float lng = (vUv.x - 0.5) * 360.0;
+
+    float temp = getTemp(lat, lng, uTime);
+    vec3  col  = palette(temp);
+
+    // Full-globe brightness:
+    //   Minimum = 0.18 → polar ice always shows as dark navy (not invisible)
+    //   Maximum = 1.00 → hot deserts/continents fully bright red
+    float brightness = (0.18 + 0.82 * temp) * uIntensity;
+
+    // Rim fade — soften the sphere silhouette
+    float rim = abs(dot(normalize(vViewNormal), vec3(0.0, 0.0, 1.0)));
+    brightness *= smoothstep(0.0, 0.22, rim);
+
+    gl_FragColor = vec4(col * brightness, brightness * 0.88);
   }
 `

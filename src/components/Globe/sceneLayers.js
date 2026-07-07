@@ -1,5 +1,5 @@
 import * as THREE from 'three'
-import { CLOUD_IMG, CONTROL_SETTINGS, EARTH_NIGHT } from './globeConstants.js'
+import { CONTROL_SETTINGS, EARTH_NIGHT } from './globeConstants.js'
 import { HEAT_FRAGMENT, HEAT_VERTEX } from './heatShader.js'
 
 // Cache geometries for reuse
@@ -154,49 +154,18 @@ export function addNightLights(scene, loader) {
 
 // ============================================================
 // CLOUD LAYER
+// NOTE: earth-water.png is a land/water MASK, not a cloud texture.
+// It was rendering as a second rotating Earth on top of the globe.
+// Cloud layer disabled until a real cloud texture (white-on-transparent PNG)
+// is available. The stub keeps EarthGlobe.jsx's ref checks safe.
 // ============================================================
 
-export function addCloudLayer(scene, loader) {
+export function addCloudLayer(_scene, _loader) {
+  // No mesh — return stub so callers don't break
   const holder = { mesh: null }
-  let texture = null
-  
-  loader.load(CLOUD_IMG, (tex) => {
-    texture = tex
-    tex.colorSpace = THREE.SRGBColorSpace
-    tex.anisotropy = 4
-    tex.wrapS = THREE.RepeatWrapping
-    tex.wrapT = THREE.RepeatWrapping
-    tex.repeat.set(1, 1)
-    
-    const material = new THREE.MeshPhongMaterial({
-      map: tex,
-      transparent: true,
-      opacity: 0.35,
-      blending: THREE.AdditiveBlending,
-      depthWrite: false,
-      side: THREE.DoubleSide,
-      shininess: 0,
-      emissive: new THREE.Color(0x88aaff),
-      emissiveIntensity: 0.1,
-    })
-    
-    holder.mesh = new THREE.Mesh(
-      sharedGeometries.sphereCloud,
-      material
-    )
-    holder.mesh.frustumCulled = true
-    holder.mesh.rotation.x = 0.05
-    scene.add(holder.mesh)
-    
-    holder.material = material
-  })
-
   return {
     holder,
-    dispose: () => {
-      disposeMesh(scene, holder.mesh)
-      if (texture) texture.dispose()
-    },
+    dispose: () => {},
   }
 }
 
@@ -215,8 +184,10 @@ export function createHeatLayer(scene) {
     transparent: true,
     depthWrite:  false,
     depthTest:   true,
-    blending:    THREE.NormalBlending,
-    side:        THREE.DoubleSide,
+    // AdditiveBlending: cold regions (near black) add nothing to Earth texture.
+    // Hot regions add bright warm colour on top → glow effect, Earth shows through.
+    blending:    THREE.AdditiveBlending,
+    side:        THREE.FrontSide,
   })
 
   const mesh = new THREE.Mesh(sharedGeometries.sphereHigh, material)
