@@ -369,22 +369,21 @@ export function createHeatLayer(scene) {
     side:        THREE.DoubleSide,
   })
 
-  // Radius is 1.006 (just above 1.0 Earth, below 1.012 night lights)
-  const geometry = new THREE.SphereGeometry(1.006, 160, 160)
-  const mesh = new THREE.Mesh(geometry, material)
+  // Use the cached 100.6 radius geometry
+  const mesh = new THREE.Mesh(sharedGeometries.sphereHigh, material)
 
   mesh.visible       = false
   mesh.frustumCulled = false
   mesh.renderOrder   = 5         // Render after Earth (0) but before clouds
 
   scene.add(mesh)
-  console.log('🔥 Heat mesh added to scene at radius 1.006, renderOrder 5')
+  console.log('🔥 Heat mesh added to scene at radius 100.6, renderOrder 5')
 
   return {
     mesh,
     dispose: () => {
       scene.remove(mesh)
-      geometry.dispose()
+      // Geometry is shared — do NOT dispose it
       material.dispose()
     },
   }
