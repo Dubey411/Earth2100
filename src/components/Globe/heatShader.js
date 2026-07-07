@@ -32,6 +32,7 @@ export const HEAT_FRAGMENT = /* glsl */`
   uniform float uIntensity;
   uniform sampler2D uTempMap;
   uniform float     uHasTempMap; // 1.0 = true, 0.0 = false
+  uniform sampler2D uMaskTex;   // Land mask: R=1 land, R=0 ocean
 
   varying vec2  vUv;
   varying vec3  vViewNormal;
@@ -133,38 +134,61 @@ export const HEAT_FRAGMENT = /* glsl */`
 
   // ── Main ─────────────────────────────────────────────────────────────────────
   void main() {
+    // ── LAND MASK (first op — cheapest possible discard) ─────────────────────
+    // The mask texture was rasterised from the world GeoJSON:
+    //   R = 1.0 → land pixel   → continue rendering
+    //   R = 0.0 → ocean pixel  → discard immediately, natural Earth shows through
+    float isLand = texture2D(uMaskTex, vUv).r;
+    if (isLand < 0.5) {
+      gl_FragColor = vec4(0.0, 0.0, 0.0, 0.0);
+      return;
+    }
+
     float lat = (0.5 - vUv.y) * 180.0;
     float lng = (vUv.x - 0.5) * 360.0;
 
-    vec3 col;
+    vec3  col;
     float temp;
+    float brightness;
+    float rim = abs(dot(normalize(vViewNormal), vec3(0.0, 0.0, 1.0)));
+    float rimFade = smoothstep(0.0, 0.22, rim);
 
     if (uHasTempMap > 0.5) {
+      // ── REAL-TIME NASA SATELLITE PATH ─────────────────────────────────────
       vec4 texCol = texture2D(uTempMap, vUv);
+
       if (texCol.a > 0.05) {
-        // Use NASA's scientific color palette directly from the satellite texture!
-        col = texCol.rgb;
-        // Estimate temperature intensity from the brightness of NASA's colors
+        // ── NASA has data for this pixel (clear-sky land) ─────────────────
+        // Use NASA's scientific thermal colour directly — it's already
+        // calibrated to the exact temperature palette.
+        col  = texCol.rgb;
         temp = clamp(dot(col, vec3(0.299, 0.587, 0.114)), 0.0, 1.0);
-      } else {
-        // Fallback to our procedural model if the satellite has no data here (e.g. cloud cover)
-        temp = getTemp(lat, lng, uTime, vUv);
-        col = palette(temp);
+
+        // Subtle atmospheric shimmer on top of real data
+        float drift = fbm(vec2(vUv.x * 4.0 + uTime * 0.008, vUv.y * 3.5 + uTime * 0.006)) * 0.06;
+        temp = clamp(temp + drift, 0.0, 1.0);
+
+        // High minimum (0.50) — NASA pixels always pop vividly
+        brightness = (0.50 + 0.50 * temp) * uIntensity * rimFade;
+        gl_FragColor = vec4(col * brightness, brightness * 0.92);
+        return;
       }
-    } else {
-      // Procedural fallback
-      temp = getTemp(lat, lng, uTime, vUv);
-      col = palette(temp);
+      // ── No NASA data here (ocean, cloud-covered land, data gap) ──────────
+      // Fall through to the procedural model below so the globe is NEVER
+      // blank. The procedural runs at low brightness so it looks clearly
+      // secondary to the vivid satellite data where it exists.
     }
 
-    // Full-globe brightness:
-    //   Minimum = 0.18 → polar ice always shows as dark navy (not invisible)
-    //   Maximum = 1.00 → hot deserts/continents fully bright red
-    float brightness = (0.18 + 0.82 * temp) * uIntensity;
+    // ── PROCEDURAL PATH ───────────────────────────────────────────────────
+    // Runs when:  (a) no NASA texture loaded, OR
+    //             (b) NASA texture loaded but no data for this pixel
+    temp = getTemp(lat, lng, uTime, vUv);
+    col  = palette(temp);
 
-    // Rim fade — soften the sphere silhouette
-    float rim = abs(dot(normalize(vViewNormal), vec3(0.0, 0.0, 1.0)));
-    brightness *= smoothstep(0.0, 0.22, rim);
+    // Lower minimum brightness (0.12) when NASA texture is present so the
+    // procedural looks secondary; full brightness (0.18) when it's the only source.
+    float minB = uHasTempMap > 0.5 ? 0.12 : 0.18;
+    brightness = (minB + (1.0 - minB) * temp) * uIntensity * rimFade;
 
     gl_FragColor = vec4(col * brightness, brightness * 0.88);
   }

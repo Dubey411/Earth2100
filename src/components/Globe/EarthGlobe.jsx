@@ -17,13 +17,13 @@ import {
 } from './signalLayerData.js'
 import { buildLocationPin, buildSignalHotspot } from './htmlOverlayBuilders.js'
 import { SIGNAL_ANIMATION_STYLES } from './signalAnimationStyles.js'
-import {
-  addCloudLayer,
+import { addCloudLayer,
   addNightLights,
   configureGlobeControls,
   createHeatLayer,
   updateHeatLayer,
 } from './sceneLayers.js'
+import worldCountries from '../../../geojson/world.geo.json/countries.geo.json'
 
 const INITIAL_SIZE = { w: window.innerWidth, h: window.innerHeight }
 
@@ -49,6 +49,55 @@ export default function EarthGlobe() {
   const setActiveRegion = useClimateStore((s) => s.setActiveRegion)
   const clearFlyTarget  = useClimateStore((s) => s.clearFlyTarget)
   const flyTo           = useClimateStore((s) => s.flyTo)
+
+  // ── Land mask texture (rasterised from GeoJSON, white=land black=ocean) ──────
+  const maskTexture = useMemo(() => {
+    const W = 2048, H = 1024
+    const canvas = document.createElement('canvas')
+    canvas.width  = W
+    canvas.height = H
+    const ctx = canvas.getContext('2d')
+
+    // Fill ocean (black)
+    ctx.fillStyle = '#000000'
+    ctx.fillRect(0, 0, W, H)
+
+    // Draw land polygons (white)
+    ctx.fillStyle = '#ffffff'
+
+    const project = ([lng, lat]) => [
+      ((lng + 180) / 360) * W,
+      ((90 - lat)  / 180) * H,
+    ]
+
+    const drawRing = (ring) => {
+      if (ring.length < 3) return
+      ctx.beginPath()
+      const [x0, y0] = project(ring[0])
+      ctx.moveTo(x0, y0)
+      for (let i = 1; i < ring.length; i++) {
+        const [x, y] = project(ring[i])
+        ctx.lineTo(x, y)
+      }
+      ctx.closePath()
+      ctx.fill()
+    }
+
+    const features = worldCountries?.features ?? []
+    features.forEach(({ geometry }) => {
+      if (!geometry) return
+      if (geometry.type === 'Polygon') {
+        geometry.coordinates.forEach(drawRing)
+      } else if (geometry.type === 'MultiPolygon') {
+        geometry.coordinates.forEach((poly) => poly.forEach(drawRing))
+      }
+    })
+
+    const tex = new THREE.CanvasTexture(canvas)
+    tex.needsUpdate = true
+    console.log('🗺️ Land mask texture generated from GeoJSON')
+    return tex
+  }, [])
 
   // ── Resize ──────────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -106,8 +155,8 @@ export default function EarthGlobe() {
     cloudsRef.current = cloudLayer.holder
     disposersRef.current.push(cloudLayer.dispose)
 
-    // 5. Add Heat layer (GPU shader sphere)
-    const heatLayer = createHeatLayer(scene, loader)
+    // 5. Add Heat layer (GPU shader sphere) — pass land mask
+    const heatLayer = createHeatLayer(scene, loader, maskTexture)
     const heatMesh  = heatLayer.mesh
     heatMeshRef.current = heatMesh
     disposersRef.current.push(heatLayer.dispose)

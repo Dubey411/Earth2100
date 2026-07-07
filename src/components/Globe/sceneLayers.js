@@ -178,7 +178,7 @@ const getDynamicTemperatureMapUrl = () => {
   return `https://gibs.earthdata.nasa.gov/wms/epsg4326/best/wms.cgi?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetMap&FORMAT=image/png&TRANSPARENT=true&LAYERS=MODIS_Terra_Land_Surface_Temp_Day&TIME=${dateStr}&CRS=EPSG:4326&WIDTH=1024&HEIGHT=512&BBOX=-90,-180,90,180`;
 };
 
-export function createHeatLayer(scene, loader) {
+export function createHeatLayer(scene, loader, maskTexture) {
   let tempTex = null;
 
   const material = new THREE.ShaderMaterial({
@@ -188,13 +188,12 @@ export function createHeatLayer(scene, loader) {
       uTime:       { value: 0.0 },
       uIntensity:  { value: 1.0 },
       uTempMap:    { value: null },
-      uHasTempMap: { value: 0.0 }, // 0.0 = False, 1.0 = True
+      uHasTempMap: { value: 0.0 },
+      uMaskTex:    { value: maskTexture ?? null }, // GeoJSON land mask (white=land, black=ocean)
     },
     transparent: true,
     depthWrite:  false,
     depthTest:   true,
-    // AdditiveBlending: cold regions (near black) add nothing to Earth texture.
-    // Hot regions add bright warm colour on top → glow effect, Earth shows through.
     blending:    THREE.AdditiveBlending,
     side:        THREE.FrontSide,
   })
