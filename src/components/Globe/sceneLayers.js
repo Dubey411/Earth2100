@@ -91,6 +91,7 @@ export function addNightLights(scene, loader) {
       material
     )
     mesh.frustumCulled = true
+    mesh.rotation.y = -Math.PI / 2; // Align with prime meridian rotation in three-globe
     scene.add(mesh)
     
     // Atmospheric glow
@@ -142,6 +143,7 @@ export function addNightLights(scene, loader) {
       glowMaterial
     )
     glowMesh.frustumCulled = true
+    glowMesh.rotation.y = -Math.PI / 2; // Align with prime meridian rotation in three-globe
     scene.add(glowMesh)
   })
 
@@ -226,8 +228,8 @@ export function createHeatLayer(scene, loader, maskTexture) {
   mesh.frustumCulled = false
   mesh.renderOrder   = 5
   
-  // ✅ CRITICAL: DO NOT ROTATE - Stays fixed to Earth
-  // No rotation applied to heat mesh
+  // ✅ Align with prime meridian rotation in three-globe
+  mesh.rotation.y = -Math.PI / 2;
 
   scene.add(mesh)
   console.log('🔥 Heat mesh added to scene at radius 100.6, renderOrder 5')
@@ -351,3 +353,6 @@ export function setCloudRotationSpeed(speed) {
 export function getCloudRotationSpeed() {
   return cloudRotationSpeed
 }
+
+
+

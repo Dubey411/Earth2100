@@ -193,3 +193,5 @@ export const HEAT_FRAGMENT = /* glsl */`
     gl_FragColor = vec4(col * brightness, brightness * 0.88);
   }
 `
+
+
