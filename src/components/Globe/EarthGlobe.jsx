@@ -107,7 +107,7 @@ export default function EarthGlobe() {
     disposersRef.current.push(cloudLayer.dispose)
 
     // 5. Add Heat layer (GPU shader sphere)
-    const heatLayer = createHeatLayer(scene)
+    const heatLayer = createHeatLayer(scene, loader)
     const heatMesh  = heatLayer.mesh
     heatMeshRef.current = heatMesh
     disposersRef.current.push(heatLayer.dispose)

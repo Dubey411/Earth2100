@@ -1,5 +1,5 @@
 import * as THREE from 'three'
-import { CONTROL_SETTINGS, EARTH_NIGHT } from './globeConstants.js'
+import { CONTROL_SETTINGS, EARTH_NIGHT, TEMPERATURE_MAP } from './globeConstants.js'
 import { HEAT_FRAGMENT, HEAT_VERTEX } from './heatShader.js'
 
 // Cache geometries for reuse
@@ -169,17 +169,26 @@ export function addCloudLayer(_scene, _loader) {
   }
 }
 
-// ============================================================
-// HEAT LAYER - STAYS FIXED TO EARTH (NO ROTATION)
-// ============================================================
+const getDynamicTemperatureMapUrl = () => {
+  // NASA GIBS updates daily, but processing takes 1-2 days.
+  // Using 3 days ago guarantees that a complete global satellite image is available.
+  const date = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000);
+  const dateStr = date.toISOString().split('T')[0];
+  
+  return `https://gibs.earthdata.nasa.gov/wms/epsg4326/best/wms.cgi?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetMap&FORMAT=image/png&TRANSPARENT=true&LAYERS=MODIS_Terra_Land_Surface_Temp_Day&TIME=${dateStr}&CRS=EPSG:4326&WIDTH=1024&HEIGHT=512&BBOX=-90,-180,90,180`;
+};
 
-export function createHeatLayer(scene) {
+export function createHeatLayer(scene, loader) {
+  let tempTex = null;
+
   const material = new THREE.ShaderMaterial({
     vertexShader:   HEAT_VERTEX,
     fragmentShader: HEAT_FRAGMENT,
     uniforms: {
-      uTime:      { value: 0.0 },
-      uIntensity: { value: 1.0 },
+      uTime:       { value: 0.0 },
+      uIntensity:  { value: 1.0 },
+      uTempMap:    { value: null },
+      uHasTempMap: { value: 0.0 }, // 0.0 = False, 1.0 = True
     },
     transparent: true,
     depthWrite:  false,
@@ -189,6 +198,28 @@ export function createHeatLayer(scene) {
     blending:    THREE.AdditiveBlending,
     side:        THREE.FrontSide,
   })
+
+  // Load live NASA GIBS temperature map texture
+  const wmsUrl = getDynamicTemperatureMapUrl();
+  console.log('🔥 Heat layer: Loading live NASA GIBS WMS texture from:', wmsUrl);
+
+  loader.load(
+    wmsUrl,
+    (tex) => {
+      tempTex = tex;
+      tex.colorSpace = THREE.SRGBColorSpace;
+      tex.wrapS = THREE.RepeatWrapping;
+      tex.wrapT = THREE.ClampToEdgeWrapping;
+      
+      material.uniforms.uTempMap.value = tex;
+      material.uniforms.uHasTempMap.value = 1.0;
+      console.log('🔥 Heat layer: Successfully loaded real-time NASA GIBS temperature map texture!');
+    },
+    undefined,
+    (err) => {
+      console.warn('🔥 Heat layer: Could not load NASA GIBS texture map, using high-quality procedural fallback:', err);
+    }
+  );
 
   const mesh = new THREE.Mesh(sharedGeometries.sphereHigh, material)
 
@@ -207,6 +238,9 @@ export function createHeatLayer(scene) {
     dispose: () => {
       scene.remove(mesh)
       material.dispose()
+      if (tempTex) {
+        tempTex.dispose();
+      }
     },
   }
 }

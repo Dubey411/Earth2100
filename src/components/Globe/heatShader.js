@@ -30,6 +30,8 @@ export const HEAT_FRAGMENT = /* glsl */`
 
   uniform float uTime;
   uniform float uIntensity;
+  uniform sampler2D uTempMap;
+  uniform float     uHasTempMap; // 1.0 = true, 0.0 = false
 
   varying vec2  vUv;
   varying vec3  vViewNormal;
@@ -61,66 +63,43 @@ export const HEAT_FRAGMENT = /* glsl */`
   }
 
   // ── Temperature model ────────────────────────────────────────────────────────
-  float getTemp(float lat, float lng, float t) {
+  float getTemp(float lat, float lng, float t, vec2 uv) {
+    float base = 0.0;
 
-    // 1. Latitudinal solar insolation (1.0 equator → 0.0 poles)
-    float solar = pow(max(0.0, cos(lat * 3.14159265 / 180.0)), 1.3);
+    if (uHasTempMap > 0.5) {
+      // 1. Read raw temperature value from live texture (Red channel)
+      base = texture2D(uTempMap, uv).r;
+    } else {
+      // 2. Procedural Fallback: Latitudinal solar insolation (1.0 equator → 0.0 poles)
+      float solar = pow(max(0.0, cos(lat * 3.14159265 / 180.0)), 1.3);
+      float absLat = abs(lat);
+      float ice    = smoothstep(62.0, 82.0, absLat) * 0.70;
+      base   = clamp(solar - ice, 0.0, 1.0);
 
-    // 2. Polar ice caps (hard suppression above ~65°)
-    float absLat = abs(lat);
-    float ice    = smoothstep(62.0, 82.0, absLat) * 0.70;
+      // Continent heat anomalies
+      float land = 0.0;
+      land += 0.30 * gauss(lat, lng,  42.0, -100.0, 22.0, 28.0); // N. America
+      land += 0.22 * gauss(lat, lng,  17.0,  -88.0, 12.0, 14.0); // Central America
+      land += 0.28 * gauss(lat, lng,  -8.0,  -58.0, 22.0, 22.0); // S. America
+      land += 0.42 * gauss(lat, lng,  22.0,   15.0, 16.0, 28.0); // Sahara
+      land += 0.38 * gauss(lat, lng,  24.0,   47.0, 12.0, 14.0); // Arabia
+      land += 0.28 * gauss(lat, lng,   5.0,   25.0, 22.0, 22.0); // Sub-Saharan Africa
+      land += 0.20 * gauss(lat, lng,  50.0,   12.0, 18.0, 22.0); // Europe
+      land += 0.35 * gauss(lat, lng,  22.0,   78.0, 14.0, 14.0); // India
+      land += 0.25 * gauss(lat, lng,  45.0,  100.0, 22.0, 35.0); // East/Central Asia
+      land += 0.28 * gauss(lat, lng,   5.0,  112.0, 16.0, 18.0); // SE Asia
+      land += 0.38 * gauss(lat, lng, -25.0,  134.0, 16.0, 20.0); // Australia
+      land += 0.25 * gauss(lat, lng,   2.0,   22.0, 18.0, 18.0); // Central Africa
+      base += land;
+    }
 
-    float base   = clamp(solar - ice, 0.0, 1.0);
-
-    // ── 3. CONTINENT HEAT BLOBS ──────────────────────────────────────────────
-    // Large sigmas (20-35°) → broad warm zones, not sharp outlines.
-    // Land warms faster than ocean → boosted up to +0.35 above base.
-
-    float land = 0.0;
-
-    // North America interior
-    land += 0.30 * gauss(lat, lng,  42.0, -100.0, 22.0, 28.0);
-    // Central America / Caribbean
-    land += 0.22 * gauss(lat, lng,  17.0,  -88.0, 12.0, 14.0);
-    // South America (Amazon + Chaco)
-    land += 0.28 * gauss(lat, lng,  -8.0,  -58.0, 22.0, 22.0);
-    // Sahara / North Africa (hottest desert on Earth)
-    land += 0.42 * gauss(lat, lng,  22.0,   15.0, 16.0, 28.0);
-    // Arabian Peninsula
-    land += 0.38 * gauss(lat, lng,  24.0,   47.0, 12.0, 14.0);
-    // Sub-Saharan Africa
-    land += 0.28 * gauss(lat, lng,   5.0,   25.0, 22.0, 22.0);
-    // Europe
-    land += 0.20 * gauss(lat, lng,  50.0,   12.0, 18.0, 22.0);
-    // South Asia (India subcontinent)
-    land += 0.35 * gauss(lat, lng,  22.0,   78.0, 14.0, 14.0);
-    // East/Central Asia
-    land += 0.25 * gauss(lat, lng,  45.0,  100.0, 22.0, 35.0);
-    // Southeast Asia
-    land += 0.28 * gauss(lat, lng,   5.0,  112.0, 16.0, 18.0);
-    // Australia interior (among world's hottest)
-    land += 0.38 * gauss(lat, lng, -25.0,  134.0, 16.0, 20.0);
-    // Central Africa
-    land += 0.25 * gauss(lat, lng,   2.0,   22.0, 18.0, 18.0);
-
-    // ── 4. Ocean warmth (weaker than land) ───────────────────────────────────
-    float ocean = 0.0;
-    ocean += 0.12 * gauss(lat, lng,  30.0,  -72.0, 10.0, 12.0); // Gulf Stream
-    ocean += 0.10 * gauss(lat, lng,  30.0,  142.0, 10.0, 12.0); // Kuroshio
-
-    // ── 5. Cold currents ─────────────────────────────────────────────────────
-    float cold = 0.0;
-    cold += 0.12 * gauss(lat, lng, -15.0,  -80.0, 12.0, 12.0); // Humboldt
-    cold += 0.10 * gauss(lat, lng, -25.0,  -13.0, 12.0, 12.0); // Benguela
-
-    // ── 6. Slow mesoscale noise drift ────────────────────────────────────────
+    // ── Shifting Wind Drift & Noise Animation (Runs on top of both modes) ────
     float drift = fbm(vec2(
-      vUv.x * 4.0 + t * 0.010,
-      vUv.y * 3.5 + t * 0.008
+      uv.x * 4.0 + t * 0.010,
+      uv.y * 3.5 + t * 0.008
     )) * 0.12 - 0.04;
 
-    float temp = clamp(base + land + ocean - cold + drift, 0.0, 1.0);
-    return temp;
+    return clamp(base + drift, 0.0, 1.0);
   }
 
   // ── NASA rainbow palette (8 stops, WebGL-safe if-chain) ─────────────────────
@@ -157,8 +136,26 @@ export const HEAT_FRAGMENT = /* glsl */`
     float lat = (0.5 - vUv.y) * 180.0;
     float lng = (vUv.x - 0.5) * 360.0;
 
-    float temp = getTemp(lat, lng, uTime);
-    vec3  col  = palette(temp);
+    vec3 col;
+    float temp;
+
+    if (uHasTempMap > 0.5) {
+      vec4 texCol = texture2D(uTempMap, vUv);
+      if (texCol.a > 0.05) {
+        // Use NASA's scientific color palette directly from the satellite texture!
+        col = texCol.rgb;
+        // Estimate temperature intensity from the brightness of NASA's colors
+        temp = clamp(dot(col, vec3(0.299, 0.587, 0.114)), 0.0, 1.0);
+      } else {
+        // Fallback to our procedural model if the satellite has no data here (e.g. cloud cover)
+        temp = getTemp(lat, lng, uTime, vUv);
+        col = palette(temp);
+      }
+    } else {
+      // Procedural fallback
+      temp = getTemp(lat, lng, uTime, vUv);
+      col = palette(temp);
+    }
 
     // Full-globe brightness:
     //   Minimum = 0.18 → polar ice always shows as dark navy (not invisible)
