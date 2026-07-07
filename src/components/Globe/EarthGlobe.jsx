@@ -112,7 +112,7 @@ export default function EarthGlobe() {
     heatMeshRef.current = heatMesh
     disposersRef.current.push(heatLayer.dispose)
 
-    // Sync helper
+    // Sync helper - controls visibility from store
     const syncHeat = (state) => {
       const active    = state.activeSignals.has('heat')
       const intensity = state.signalIntensity.heat ?? 1.0
