@@ -240,6 +240,54 @@ export default function EarthGlobe() {
     return isDragging ? 'grabbing' : 'grab'
   }, [handToolActive, isDragging])
 
+  // ── Active rings data (water ripples for Flood and Sea Level) ───────────────
+  const activeRings = useMemo(() => {
+    const rings = []
+
+    if (activeSignals.has('flood')) {
+      const intensity = signalIntensity.flood ?? 1.0
+      FLOOD_RINGS.forEach((r) => {
+        rings.push({
+          ...r,
+          maxR: 12 * intensity,
+          propagationSpeed: 3.2 * intensity,
+          repeatPeriod: 1500 / intensity,
+          // Returns color interpolator function t => color
+          colorFn: () => (t) => `rgba(0, 102, 255, ${(1 - t) * 0.95 * intensity})`,
+        })
+      })
+    }
+
+    if (activeSignals.has('sealevel')) {
+      const intensity = signalIntensity.sealevel ?? 1.0
+      SEALEVEL_RINGS.forEach((r) => {
+        rings.push({
+          ...r,
+          maxR: 8.5 * intensity,
+          propagationSpeed: 1.8 * intensity,
+          repeatPeriod: 2200 / intensity,
+          // Returns color interpolator function t => color
+          colorFn: () => (t) => `rgba(0, 255, 242, ${(1 - t) * 0.88 * intensity})`,
+        })
+      })
+    }
+
+    return rings
+  }, [activeSignals, signalIntensity])
+
+  // ── Active arcs data (atmospheric/ocean current lines for ENSO) ──────────────
+  const activeArcs = useMemo(() => {
+    if (!activeSignals.has('enso')) return []
+    const intensity = signalIntensity.enso ?? 1.0
+    return ENSO_ARCS.map((arc) => ({
+      ...arc,
+      stroke: 1.2 * intensity,
+      dashLength: 0.35,
+      dashGap: 0.15,
+      dashAnimateTime: 2000 / intensity,
+    }))
+  }, [activeSignals, signalIntensity])
+
   const signalHtmlData = useMemo(() => {
     const pts = []
     activeSignals.forEach((sigId) => {
@@ -286,8 +334,25 @@ export default function EarthGlobe() {
         htmlLng="lng"
         htmlAltitude={(d) => d._type === 'signal' ? 0.012 : 0.01}
         htmlElement={buildHtmlElement}
-        ringsData={[]}
-        arcsData={[]}
+        
+        // Rippling rings layer (Flood / Sea Level)
+        ringsData={activeRings}
+        ringColor={(d) => d.colorFn()}
+        ringMaxRadius="maxR"
+        ringPropagationSpeed="propagationSpeed"
+        ringRepeatPeriod="repeatPeriod"
+
+        // Dynamic flowing arcs layer (ENSO currents)
+        arcsData={activeArcs}
+        arcStartLat="startLat"
+        arcStartLng="startLng"
+        arcEndLat="endLat"
+        arcEndLng="endLng"
+        arcColor="color"
+        arcStroke="stroke"
+        arcDashLength="dashLength"
+        arcDashGap="dashGap"
+        arcDashAnimateTime="dashAnimateTime"
       />
       <style>{SIGNAL_ANIMATION_STYLES}</style>
     </div>
