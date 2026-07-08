@@ -24,6 +24,7 @@ import { addCloudLayer,
   updateHeatLayer,
 } from './sceneLayers.js'
 import worldCountries from '../../../geojson/world.geo.json/countries.geo.json'
+import FloodLayer from './FloodLayer/index.jsx'
 
 const INITIAL_SIZE = { w: window.innerWidth, h: window.innerHeight }
 
@@ -38,8 +39,9 @@ export default function EarthGlobe() {
   const controlsRef  = useRef(null)
   const disposersRef = useRef([])
 
-  const [size,       setSize]       = useState(INITIAL_SIZE)
-  const [isDragging, setIsDragging] = useState(false)
+  const [size,          setSize]          = useState(INITIAL_SIZE)
+  const [isDragging,    setIsDragging]    = useState(false)
+  const [globeInstance, setGlobeInstance] = useState(null)
 
   const autoRotate      = useClimateStore((s) => s.autoRotate)
   const flyTarget       = useClimateStore((s) => s.flyTarget)
@@ -194,7 +196,10 @@ export default function EarthGlobe() {
     }
 
     rafRef.current = requestAnimationFrame(tick)
-  }, [])
+
+    // Trigger state update so React child components can mount
+    setGlobeInstance(globe)
+  }, [maskTexture])
 
   // ── Cleanup ─────────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -244,19 +249,7 @@ export default function EarthGlobe() {
   const activeRings = useMemo(() => {
     const rings = []
 
-    if (activeSignals.has('flood')) {
-      const intensity = signalIntensity.flood ?? 1.0
-      FLOOD_RINGS.forEach((r) => {
-        rings.push({
-          ...r,
-          maxR: 12 * intensity,
-          propagationSpeed: 3.2 * intensity,
-          repeatPeriod: 1500 / intensity,
-          // Returns color interpolator function t => color
-          colorFn: () => (t) => `rgba(0, 102, 255, ${(1 - t) * 0.95 * intensity})`,
-        })
-      })
-    }
+    // Flood ripples are now handled in the custom shader layer of the modular <FloodLayer /> component
 
     if (activeSignals.has('sealevel')) {
       const intensity = signalIntensity.sealevel ?? 1.0
@@ -335,7 +328,7 @@ export default function EarthGlobe() {
         htmlAltitude={(d) => d._type === 'signal' ? 0.012 : 0.01}
         htmlElement={buildHtmlElement}
         
-        // Rippling rings layer (Flood / Sea Level)
+        // Rippling rings layer (Sea Level / Flood is delegated to custom shader)
         ringsData={activeRings}
         ringColor={(d) => d.colorFn()}
         ringMaxRadius="maxR"
@@ -354,6 +347,13 @@ export default function EarthGlobe() {
         arcDashGap="dashGap"
         arcDashAnimateTime="dashAnimateTime"
       />
+      {globeInstance && activeSignals.has('flood') && (
+        <FloodLayer
+          globe={globeInstance}
+          scene={globeInstance.scene()}
+          maskTexture={maskTexture}
+        />
+      )}
       <style>{SIGNAL_ANIMATION_STYLES}</style>
     </div>
   )

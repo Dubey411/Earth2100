@@ -26,22 +26,24 @@ const alphaHex = (value) => Math.round(value * 255).toString(16).padStart(2, '0'
 
 export function buildSignalHotspot(hp, signalId, intensity) {
   const anim = ANIM_TYPE[signalId] || 'pulse'
-  const opBase = (BASE_OPACITY[signalId] ?? 0.3) * intensity
-  const r = hp.radius
+  const isFlood = signalId === 'flood'
+  const opBase = (BASE_OPACITY[signalId] ?? 0.3) * intensity * (isFlood ? 1.50 : 1.0)
+  const r = hp.radius * (isFlood ? 1.15 : 1.0)
 
   const wrap = document.createElement('div')
   wrap.style.cssText = `position:relative;width:${r * 2}px;height:${r * 2}px;pointer-events:auto;cursor:crosshair;`
 
   const halo = document.createElement('div')
   halo.style.cssText = `
-    position:absolute;left:50%;top:50%;width:${r * 2.8}px;height:${r * 2.8}px;
+    position:absolute;left:50%;top:50%;width:${r * (isFlood ? 3.6 : 2.8)}px;height:${r * (isFlood ? 3.6 : 2.8)}px;
     border-radius:50%;transform:translate(-50%,-50%);
     background:radial-gradient(circle,${hp.c2}${alphaHex(opBase * 0.38)} 0%,${hp.c3}0a 50%,transparent 75%);
-    filter:blur(${r * 0.45}px);pointer-events:none;mix-blend-mode:screen;
+    filter:blur(${r * (isFlood ? 0.65 : 0.45)}px);pointer-events:none;mix-blend-mode:screen;
   `
   wrap.appendChild(halo)
 
   const fill = document.createElement('div')
+  const animDuration = isFlood ? 1.1 : (anim === 'ripple' ? 2.2 : anim === 'breathe' ? 3.5 : 1.5)
   fill.style.cssText = `
     position:absolute;left:50%;top:50%;width:${r * 2}px;height:${r * 2}px;
     border-radius:50%;transform:translate(-50%,-50%);
@@ -50,31 +52,34 @@ export function buildSignalHotspot(hp, signalId, intensity) {
       ${hp.c2}${alphaHex(opBase * 0.55)} 38%,
       ${hp.c3}${alphaHex(opBase * 0.18)} 68%,transparent 100%);
     filter:blur(${r * 0.18}px);pointer-events:none;mix-blend-mode:screen;
-    animation:sig-${anim} ${anim === 'ripple' ? 2.2 : anim === 'breathe' ? 3.5 : 1.5}s ease-in-out infinite;
+    animation:sig-${anim} ${animDuration}s ease-in-out infinite;
   `
   wrap.appendChild(fill)
 
   const numRings = anim === 'breathe' ? 0 : anim === 'coast' ? 3 : 2
   for (let i = 0; i < numRings; i++) {
     const ring = document.createElement('div')
+    const ringDuration = isFlood ? 1.1 : (anim === 'ripple' ? 2.2 : anim === 'coast' ? 3.0 : 1.8)
+    const ringDelay = i * (isFlood ? 0.45 : (anim === 'ripple' ? 0.9 : anim === 'coast' ? 1.1 : 0.7))
     ring.style.cssText = `
       position:absolute;left:50%;top:50%;width:${r * 1.1}px;height:${r * 1.1}px;
-      border-radius:50%;border:${anim === 'coast' ? 1.5 : 2}px solid ${hp.c2};
+      border-radius:50%;border:${isFlood ? 3.0 : (anim === 'coast' ? 1.5 : 2)}px solid ${isFlood ? '#00e5ff' : hp.c2};
       transform:translate(-50%,-50%) scale(0.5);
       pointer-events:none;mix-blend-mode:screen;opacity:0;
-      animation:sig-ring-${anim} ${anim === 'ripple' ? 2.2 : anim === 'coast' ? 3.0 : 1.8}s ease-out infinite ${i * (anim === 'ripple' ? 0.9 : anim === 'coast' ? 1.1 : 0.7)}s;
+      animation:sig-ring-${anim} ${ringDuration}s ease-out infinite ${ringDelay}s;
     `
     wrap.appendChild(ring)
   }
 
   const dot = document.createElement('div')
   const dotR = Math.max(4, r * 0.10)
+  const dotDuration = isFlood ? 0.9 : (anim === 'blink' ? 1.2 : anim === 'flicker' ? 0.4 : 1.8)
   dot.style.cssText = `
     position:absolute;left:50%;top:50%;width:${dotR * 2}px;height:${dotR * 2}px;
-    border-radius:50%;background:${hp.c1};transform:translate(-50%,-50%);
+    border-radius:50%;background:${isFlood ? '#00e5ff' : hp.c1};transform:translate(-50%,-50%);
     box-shadow:0 0 ${dotR * 1.5}px ${hp.c1},0 0 ${dotR * 3}px ${hp.c2},0 0 ${dotR * 5}px ${hp.c3}55;
     pointer-events:none;mix-blend-mode:screen;
-    animation:sig-dot-${anim} ${anim === 'blink' ? 1.2 : anim === 'flicker' ? 0.4 : 1.8}s ease-in-out infinite;
+    animation:sig-dot-${anim} ${dotDuration}s ease-in-out infinite;
   `
   wrap.appendChild(dot)
 
@@ -89,7 +94,11 @@ export function buildSignalHotspot(hp, signalId, intensity) {
     color:${hp.c2};white-space:nowrap;z-index:999;text-align:center;
     box-shadow:0 4px 20px rgba(0,0,0,0.7),0 0 12px ${hp.c1}33;
   `
-  tip.textContent = hp.label
+  if (isFlood) {
+    tip.innerHTML = `<span style="font-weight:700;color:#77d6ff;">${hp.label}</span><br/><span style="font-size:9.5px;color:#ff4444;font-weight:800;letter-spacing:0.5px;">⚠ Extreme Flood Risk</span>`
+  } else {
+    tip.textContent = hp.label
+  }
   wrap.appendChild(tip)
   wrap.addEventListener('mouseenter', () => { tip.style.opacity = '1'; tip.style.transform = 'translateX(-50%) translateY(0)' })
   wrap.addEventListener('mouseleave', () => { tip.style.opacity = '0'; tip.style.transform = 'translateX(-50%) translateY(4px)' })
