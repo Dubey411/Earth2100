@@ -1,10 +1,7 @@
 /**
  * StormVeil.jsx — Dark storm atmosphere veil over flood hotspots.
  *
- * Replaces the old Clouds.jsx. Uses a lower-overhead procedural dark haze:
- *  - Drifting fBm noise darkens the atmosphere above flood zones
- *  - Responds to lightningRef for flash brightening
- *  - Perimeter fade so there's no hard edge
+ * Hooked to real-time NASA GPM IMERG Precipitation satellite feed.
  *
  * Radius  : 100.85
  * Blending: NormalBlending (alpha composite, not additive)
@@ -31,10 +28,12 @@ const VERT = /* glsl */`
 const FRAG = /* glsl */`
   precision highp float;
 
-  uniform float uTime;
-  uniform float uOpacity;
-  uniform float uLightning;
-  uniform vec2  uHotspots[5];
+  uniform float     uTime;
+  uniform float     uOpacity;
+  uniform float     uLightning;
+  uniform vec2      uHotspots[5];
+  uniform sampler2D uPrecipMap;
+  uniform float     uHasPrecipMap; // 1.0 = true, 0.0 = false
 
   varying vec2 vUv;
   varying vec3 vViewNormal;
@@ -65,6 +64,14 @@ const FRAG = /* glsl */`
       mask += exp(-(dLat*dLat + dLng*dLng) / (2.0 * 196.0)); // sigma = 14°
     }
     mask = clamp(mask, 0.0, 1.0);
+
+    // Modulate cloud cover based on live precipitation satellite data
+    if (uHasPrecipMap > 0.5) {
+      vec4 precip = texture2D(uPrecipMap, vUv);
+      // precip.a has rainfall rate info; scale cloud cover accordingly
+      mask *= (0.22 + 0.78 * precip.a);
+    }
+
     if (mask < 0.01) discard;
 
     // Drifting storm noise — slow, dark swirls
@@ -91,7 +98,7 @@ const FRAG = /* glsl */`
   }
 `
 
-export default function StormVeil({ scene, lightningRef, registerAnimated }) {
+export default function StormVeil({ scene, lightningRef, precipTexture, registerAnimated }) {
   useEffect(() => {
     const hotspotUniforms = FLOOD_HOTSPOTS.map(([lat, lng]) => new THREE.Vector2(lat, lng))
 
@@ -99,10 +106,12 @@ export default function StormVeil({ scene, lightningRef, registerAnimated }) {
       vertexShader:   VERT,
       fragmentShader: FRAG,
       uniforms: {
-        uTime:      { value: 0.0 },
-        uOpacity:   { value: 0.0 },
-        uLightning: { value: 0.0 },
-        uHotspots:  { value: hotspotUniforms },
+        uTime:         { value: 0.0 },
+        uOpacity:      { value: 0.0 },
+        uLightning:    { value: 0.0 },
+        uHotspots:     { value: hotspotUniforms },
+        uPrecipMap:    { value: null },
+        uHasPrecipMap: { value: 0.0 },
       },
       transparent: true,
       depthWrite:  false,
@@ -115,7 +124,20 @@ export default function StormVeil({ scene, lightningRef, registerAnimated }) {
     mesh.rotation.y    = -Math.PI / 2
     mesh.frustumCulled = false
     mesh.renderOrder   = 6
+
+    // ✅ Set identify metadata for raycasting click handler
+    mesh.userData = { 
+      floodType: 'veil', 
+      name: 'GPM IMERG Storm Veil' 
+    }
+
     scene.add(mesh)
+
+    // Sync precipitation texture when it loads asynchronously
+    if (precipTexture) {
+      material.uniforms.uPrecipMap.value = precipTexture
+      material.uniforms.uHasPrecipMap.value = 1.0
+    }
 
     const startMs = performance.now()
 
@@ -123,6 +145,12 @@ export default function StormVeil({ scene, lightningRef, registerAnimated }) {
       material.uniforms.uOpacity.value   = Math.min((performance.now() - startMs) / FADE_IN_MS, 1.0)
       material.uniforms.uTime.value      = t
       material.uniforms.uLightning.value = lightningRef.current.value
+      
+      // Keep texture synced in loop just in case
+      if (precipTexture && material.uniforms.uHasPrecipMap.value < 0.5) {
+        material.uniforms.uPrecipMap.value = precipTexture
+        material.uniforms.uHasPrecipMap.value = 1.0
+      }
     })
 
     return () => {
@@ -142,7 +170,8 @@ export default function StormVeil({ scene, lightningRef, registerAnimated }) {
       }
       requestAnimationFrame(fadeOut)
     }
-  }, [scene]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [scene, precipTexture]) // eslint-disable-line react-hooks/exhaustive-deps
 
   return null
 }
+

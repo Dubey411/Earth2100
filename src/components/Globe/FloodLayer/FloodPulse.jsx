@@ -122,6 +122,13 @@ export default function FloodPulse({ scene, maskTexture, registerAnimated }) {
     mesh.rotation.y    = -Math.PI / 2
     mesh.frustumCulled = false
     mesh.renderOrder   = 4
+
+    // Set identification metadata for click handler
+    mesh.userData = {
+      floodType: 'pulse',
+      name: 'Vivid Inundation Overlay'
+    }
+
     scene.add(mesh)
 
     const startMs = performance.now()

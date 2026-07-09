@@ -111,6 +111,13 @@ export default function FloodRings({ scene, registerAnimated }) {
     mesh.rotation.y    = -Math.PI / 2
     mesh.frustumCulled = false
     mesh.renderOrder   = 8
+
+    // Set identification metadata for click handler
+    mesh.userData = {
+      floodType: 'ripple',
+      name: 'Dynamic Wave Ripples'
+    }
+
     scene.add(mesh)
 
     const startMs = performance.now()

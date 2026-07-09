@@ -101,6 +101,13 @@ export default function FloodBeams({ scene, registerAnimated }) {
 
       mesh.frustumCulled = false
       mesh.renderOrder   = 9
+
+      // Set identification metadata for click handler
+      mesh.userData = {
+        floodType: 'beam',
+        name: '3D Precipitation Beacon'
+      }
+
       scene.add(mesh)
 
       return { mesh, mat, phase: idx * 0.37 }   // stagger phases
