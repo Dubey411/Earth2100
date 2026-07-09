@@ -25,6 +25,7 @@ import { addCloudLayer,
 } from './sceneLayers.js'
 import worldCountries from '../../../geojson/world.geo.json/countries.geo.json'
 import FloodLayer from './FloodLayer/index.jsx'
+import ElNinoLayer from './ElNinoLayer/index.jsx'
 
 const INITIAL_SIZE = { w: window.innerWidth, h: window.innerHeight }
 
@@ -270,16 +271,10 @@ export default function EarthGlobe() {
 
   // ── Active arcs data (atmospheric/ocean current lines for ENSO) ──────────────
   const activeArcs = useMemo(() => {
-    if (!activeSignals.has('enso')) return []
-    const intensity = signalIntensity.enso ?? 1.0
-    return ENSO_ARCS.map((arc) => ({
-      ...arc,
-      stroke: 1.2 * intensity,
-      dashLength: 0.35,
-      dashGap: 0.15,
-      dashAnimateTime: 2000 / intensity,
-    }))
-  }, [activeSignals, signalIntensity])
+    // Redesigned ENSO layer uses custom particles inside <ElNinoLayer />.
+    // Return empty array so no default orange arcs are drawn.
+    return []
+  }, [])
 
   const signalHtmlData = useMemo(() => {
     const pts = []
@@ -353,6 +348,13 @@ export default function EarthGlobe() {
       />
       {globeInstance && activeSignals.has('flood') && (
         <FloodLayer
+          globe={globeInstance}
+          scene={globeInstance.scene()}
+          maskTexture={maskTexture}
+        />
+      )}
+      {globeInstance && activeSignals.has('enso') && (
+        <ElNinoLayer
           globe={globeInstance}
           scene={globeInstance.scene()}
           maskTexture={maskTexture}
