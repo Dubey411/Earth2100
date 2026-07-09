@@ -209,24 +209,24 @@ export default function FloodLayer({ globe, scene, maskTexture }) {
       {selectedInfo && (
         <div style={{
           position: 'absolute',
-          bottom: '30px',
+          top: '75px',
           left: '50%',
           transform: 'translateX(-50%)',
-          background: 'rgba(5, 14, 28, 0.92)',
-          border: '1px solid rgba(0, 229, 255, 0.45)',
-          boxShadow: '0 0 25px rgba(0, 229, 255, 0.22), inset 0 0 12px rgba(0, 229, 255, 0.08)',
-          borderRadius: '10px',
-          padding: '16px 20px',
+          background: 'rgba(5, 14, 28, 0.94)',
+          border: '1px solid rgba(0, 229, 255, 0.5)',
+          boxShadow: '0 0 20px rgba(0, 229, 255, 0.2), inset 0 0 10px rgba(0, 229, 255, 0.08)',
+          borderRadius: '8px',
+          padding: '10px 14px',
           color: '#e2e8f0',
           fontFamily: '"Outfit", "Inter", sans-serif',
-          backdropFilter: 'blur(10px)',
-          width: '330px',
+          backdropFilter: 'blur(8px)',
+          width: '230px',
           zIndex: 9999,
-          animation: 'floodSlideUp 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards'
+          animation: 'floodSlideDown 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards'
         }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-            <span style={{ fontSize: '8.5px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '1.2px', color: '#00e5ff' }}>
-              Climate Signal Instrument
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+            <span style={{ fontSize: '7.5px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '1.0px', color: '#00e5ff' }}>
+              Instrument Identified
             </span>
             <button 
               onClick={() => setSelectedInfo(null)}
@@ -235,43 +235,43 @@ export default function FloodLayer({ globe, scene, maskTexture }) {
                 border: 'none',
                 color: '#718096',
                 cursor: 'pointer',
-                fontSize: '13px',
+                fontSize: '11px',
                 fontWeight: 700,
-                padding: '0 4px',
+                padding: '0',
                 lineHeight: 1
               }}
             >
               ✕
             </button>
           </div>
-          <h3 style={{ margin: 0, fontSize: '15px', fontWeight: 700, color: '#ffffff', letterSpacing: '0.2px' }}>
+          <h3 style={{ margin: 0, fontSize: '12.5px', fontWeight: 700, color: '#ffffff', letterSpacing: '0.1px' }}>
             {selectedInfo.name}
           </h3>
-          <p style={{ margin: '6px 0 8px 0', fontSize: '11px', color: '#a0aec0', lineHeight: 1.45 }}>
+          <p style={{ margin: '4px 0 6px 0', fontSize: '9.5px', color: '#a0aec0', lineHeight: 1.35 }}>
             {selectedInfo.desc}
           </p>
 
           {/* Dynamic weather API readouts */}
           {selectedInfo.liveStats && (
             <div style={{
-              marginTop: '10px',
-              paddingTop: '10px',
+              marginTop: '6px',
+              paddingTop: '6px',
               borderTop: '1px solid rgba(0, 229, 255, 0.25)',
-              fontSize: '10.5px',
+              fontSize: '9.5px',
               fontFamily: 'monospace',
               color: '#00e5ff',
-              lineHeight: '1.6'
+              lineHeight: '1.5'
             }}>
-              <div style={{ color: '#e2e8f0', fontWeight: 600, marginBottom: '4px' }}>📍 REGION: {selectedInfo.liveStats.region}</div>
+              <div style={{ color: '#e2e8f0', fontWeight: 600, marginBottom: '2px' }}>📍 {selectedInfo.liveStats.region}</div>
               <div>📡 COORDS: {selectedInfo.liveStats.lat}°N, {selectedInfo.liveStats.lng}°E</div>
-              <div>🌧️ LIVE PRECIP: {selectedInfo.liveStats.rain}</div>
-              <div>☁️ CLOUD COVER: {selectedInfo.liveStats.clouds}</div>
+              <div>🌧️ RAIN: {selectedInfo.liveStats.rain}</div>
+              <div>☁️ CLOUDS: {selectedInfo.liveStats.clouds}</div>
             </div>
           )}
 
           <style>{`
-            @keyframes floodSlideUp {
-              from { opacity: 0; transform: translate(-50%, 15px); }
+            @keyframes floodSlideDown {
+              from { opacity: 0; transform: translate(-50%, -10px); }
               to { opacity: 1; transform: translate(-50%, 0); }
             }
           `}</style>
