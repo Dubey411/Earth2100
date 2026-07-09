@@ -183,6 +183,7 @@ export default function FloodLayer({ globe, scene, maskTexture }) {
         registerAnimated={registerAnimated}
       />
       <FloodBeams
+        globe={globe}
         scene={scene}
         realtimeData={realtimeData}
         registerAnimated={registerAnimated}
@@ -198,6 +199,7 @@ export default function FloodLayer({ globe, scene, maskTexture }) {
         registerAnimated={registerAnimated}
       />
       <Lightning
+        globe={globe}
         scene={scene}
         lightningRef={lightningRef}
         registerAnimated={registerAnimated}

@@ -67,10 +67,13 @@ const BEAM_FRAG = /* glsl */`
   }
 `
 
-export default function FloodBeams({ scene, realtimeData, registerAnimated }) {
+export default function FloodBeams({ globe, scene, realtimeData, registerAnimated }) {
   useEffect(() => {
+    if (!globe) return
+
     const beams = FLOOD_HOTSPOTS.map(([lat, lng], idx) => {
-      const surfacePos = latLngToWorld(lat, lng, GLOBE_R + 0.3)
+      const coords = globe.getCoords(lat, lng, 0.003)
+      const surfacePos = new THREE.Vector3(coords.x, coords.y, coords.z)
       const radialDir  = surfacePos.clone().normalize()    // outward direction
 
       // CylinderGeometry: height, radiusTop, radiusBottom, segments
@@ -128,8 +131,8 @@ export default function FloodBeams({ scene, realtimeData, registerAnimated }) {
         }
         
         // Dynamically scale Y height based on live precipitation amount (0.0 to 10.0 mm)
-        // Dormant height is 0.25, fully active rain height is 1.50
-        const targetScaleY = 0.25 + 1.25 * Math.min(rainVal / 10.0, 1.0)
+        // Min scale is 0.55 (always visible), max scale is 2.20 (active rain)
+        const targetScaleY = 0.55 + 1.65 * Math.min(rainVal / 10.0, 1.0)
 
         // Pulse animation
         const pulse = 0.6 + 0.4 * Math.abs(Math.sin(t * 0.9 + phase * Math.PI * 2))
@@ -158,7 +161,7 @@ export default function FloodBeams({ scene, realtimeData, registerAnimated }) {
       }
       requestAnimationFrame(fadeOut)
     }
-  }, [scene, realtimeData]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [globe, scene, realtimeData]) // eslint-disable-line react-hooks/exhaustive-deps
 
   return null
 }
