@@ -11,6 +11,15 @@ export const FLOOD_HOTSPOTS = [
   [36.0, -90.0],   // Mississippi
 ]
 
+// ── Hotspot details for labeling ───────────────────────────────────────────
+export const HOTSPOT_INFO = [
+  { label: 'Bangladesh River Basin', lat: 23.7, lng: 90.4 },
+  { label: 'Indus River Basin (Pakistan)', lat: 30.0, lng: 70.0 },
+  { label: 'Eastern India Coast', lat: 20.0, lng: 85.0 },
+  { label: 'Netherlands Delta', lat: 52.3, lng: 5.3 },
+  { label: 'Mississippi Valley (USA)', lat: 36.0, lng: -90.0 },
+]
+
 // ── Water accumulation regions (lat, lng) ───────────────────────────────────
 export const FLOOD_REGIONS = [
   [23.7,  90.4],   // Bangladesh

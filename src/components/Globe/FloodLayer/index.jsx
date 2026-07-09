@@ -3,7 +3,7 @@
  *
  * Stack:
  *  1. FloodPulse   — Bright additive glow blobs on the globe surface
- *  2. FloodBeams   — Vertical light columns rising from each hotspot (3D instanced)
+ *  2. FloodBeams   — Vertical light columns rising from each hotspot (3D instanced, driven by Open-Meteo weather)
  *  3. FloodRings   — Expanding cyan shock rings (UV shader, unrolled)
  *  4. StormVeil    — Dark storm atmosphere over flood zones (modulated by GPM IMERG)
  *  5. Lightning    — PointLight flashes
@@ -15,13 +15,14 @@ import FloodBeams  from './FloodBeams'
 import FloodRings  from './FloodRings'
 import StormVeil   from './StormVeil'
 import Lightning   from './Lightning'
-import { getDynamicPrecipitationMapUrl } from './constants'
+import { getDynamicPrecipitationMapUrl, FLOOD_HOTSPOTS, HOTSPOT_INFO } from './constants'
 
 export default function FloodLayer({ globe, scene, maskTexture }) {
   const lightningRef = useRef({ value: 0.0 })
   const animatedRef  = useRef([])
 
   const [precipTexture, setPrecipTexture] = useState(null)
+  const [realtimeData, setRealtimeData] = useState([])
   const [selectedInfo, setSelectedInfo] = useState(null)
 
   const registerAnimated = useCallback((fn) => {
@@ -52,6 +53,33 @@ export default function FloodLayer({ globe, scene, maskTexture }) {
     return () => {
       if (tex) tex.dispose()
     }
+  }, [])
+
+  // ── 📊 Fetch Real-Time weather stats from Open-Meteo ───────────────────────
+  useEffect(() => {
+    const fetchWeather = async () => {
+      try {
+        console.log('📊 Open-Meteo: Fetching live weather statistics for flood hotspots...')
+        const promises = FLOOD_HOTSPOTS.map(async ([lat, lng], idx) => {
+          const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=precipitation,rain,cloud_cover`)
+          const json = await res.json()
+          return {
+            index: idx,
+            lat,
+            lng,
+            precipitation: json.current?.precipitation ?? 0.0,
+            rain: json.current?.rain ?? 0.0,
+            cloudCover: json.current?.cloud_cover ?? 0.0
+          }
+        })
+        const results = await Promise.all(promises)
+        setRealtimeData(results)
+        console.log('📊 Open-Meteo: Live weather data successfully loaded:', results)
+      } catch (err) {
+        console.warn('📊 Open-Meteo: Failed to load weather stats, using simulation fallbacks:', err)
+      }
+    }
+    fetchWeather()
   }, [])
 
   // ── Single shared RAF ─────────────────────────────────────────────────────
@@ -108,11 +136,26 @@ export default function FloodLayer({ globe, scene, maskTexture }) {
       const intersects = raycaster.intersectObjects(targets)
       if (intersects.length > 0) {
         const hit = intersects[0]
-        const { floodType, name } = hit.object.userData
+        const { floodType, name, index } = hit.object.userData
         
         let desc = ''
+        let liveStats = null
+
+        // Get hotspot-specific metadata & weather values if available
+        if (typeof index === 'number' && HOTSPOT_INFO[index]) {
+          const region = HOTSPOT_INFO[index]
+          const weather = realtimeData[index]
+          liveStats = {
+            region: region.label,
+            lat: region.lat,
+            lng: region.lng,
+            rain: weather ? `${weather.precipitation.toFixed(1)} mm/hr` : 'Fetching...',
+            clouds: weather ? `${weather.cloudCover}%` : 'Fetching...'
+          }
+        }
+
         if (floodType === 'beam') {
-          desc = 'A vertical 3D volumetric light column centered over extreme weather zones. The beam height and intensity pulse in real-time, mapping active flood risk coordinates.'
+          desc = 'A vertical 3D volumetric light column. The beam Y-scale adjusts dynamically in real-time based on actual precipitation levels measured by the Open-Meteo Weather API.'
         } else if (floodType === 'ripple') {
           desc = 'Concentric shock-wave rings modeling the velocity and propagation of flash floods and surface water runoff expanding outward from storm centers.'
         } else if (floodType === 'veil') {
@@ -121,7 +164,7 @@ export default function FloodLayer({ globe, scene, maskTexture }) {
           desc = 'High-contrast GPU shader visualizing surface water accumulation and flood-level rise on land masses using Gerstner wave interference models.'
         }
 
-        setSelectedInfo({ type: floodType, name, desc })
+        setSelectedInfo({ type: floodType, name, desc, liveStats })
       } else {
         // Clear panel when clicking elsewhere
         setSelectedInfo(null)
@@ -130,7 +173,7 @@ export default function FloodLayer({ globe, scene, maskTexture }) {
 
     canvas.addEventListener('click', onClick)
     return () => canvas.removeEventListener('click', onClick)
-  }, [globe, scene])
+  }, [globe, scene, realtimeData])
 
   return (
     <>
@@ -141,6 +184,7 @@ export default function FloodLayer({ globe, scene, maskTexture }) {
       />
       <FloodBeams
         scene={scene}
+        realtimeData={realtimeData}
         registerAnimated={registerAnimated}
       />
       <FloodRings
@@ -166,7 +210,7 @@ export default function FloodLayer({ globe, scene, maskTexture }) {
           bottom: '30px',
           left: '50%',
           transform: 'translateX(-50%)',
-          background: 'rgba(5, 14, 28, 0.88)',
+          background: 'rgba(5, 14, 28, 0.92)',
           border: '1px solid rgba(0, 229, 255, 0.45)',
           boxShadow: '0 0 25px rgba(0, 229, 255, 0.22), inset 0 0 12px rgba(0, 229, 255, 0.08)',
           borderRadius: '10px',
@@ -174,7 +218,7 @@ export default function FloodLayer({ globe, scene, maskTexture }) {
           color: '#e2e8f0',
           fontFamily: '"Outfit", "Inter", sans-serif',
           backdropFilter: 'blur(10px)',
-          width: '320px',
+          width: '330px',
           zIndex: 9999,
           animation: 'floodSlideUp 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards'
         }}>
@@ -201,9 +245,27 @@ export default function FloodLayer({ globe, scene, maskTexture }) {
           <h3 style={{ margin: 0, fontSize: '15px', fontWeight: 700, color: '#ffffff', letterSpacing: '0.2px' }}>
             {selectedInfo.name}
           </h3>
-          <p style={{ margin: '6px 0 0 0', fontSize: '11px', color: '#a0aec0', lineHeight: 1.45 }}>
+          <p style={{ margin: '6px 0 8px 0', fontSize: '11px', color: '#a0aec0', lineHeight: 1.45 }}>
             {selectedInfo.desc}
           </p>
+
+          {/* Dynamic weather API readouts */}
+          {selectedInfo.liveStats && (
+            <div style={{
+              marginTop: '10px',
+              paddingTop: '10px',
+              borderTop: '1px solid rgba(0, 229, 255, 0.25)',
+              fontSize: '10.5px',
+              fontFamily: 'monospace',
+              color: '#00e5ff',
+              lineHeight: '1.6'
+            }}>
+              <div style={{ color: '#e2e8f0', fontWeight: 600, marginBottom: '4px' }}>📍 REGION: {selectedInfo.liveStats.region}</div>
+              <div>📡 COORDS: {selectedInfo.liveStats.lat}°N, {selectedInfo.liveStats.lng}°E</div>
+              <div>🌧️ LIVE PRECIP: {selectedInfo.liveStats.rain}</div>
+              <div>☁️ CLOUD COVER: {selectedInfo.liveStats.clouds}</div>
+            </div>
+          )}
 
           <style>{`
             @keyframes floodSlideUp {

@@ -67,7 +67,7 @@ const BEAM_FRAG = /* glsl */`
   }
 `
 
-export default function FloodBeams({ scene, registerAnimated }) {
+export default function FloodBeams({ scene, realtimeData, registerAnimated }) {
   useEffect(() => {
     const beams = FLOOD_HOTSPOTS.map(([lat, lng], idx) => {
       const surfacePos = latLngToWorld(lat, lng, GLOBE_R + 0.3)
@@ -105,7 +105,8 @@ export default function FloodBeams({ scene, registerAnimated }) {
       // Set identification metadata for click handler
       mesh.userData = {
         floodType: 'beam',
-        name: '3D Precipitation Beacon'
+        name: '3D Precipitation Beacon',
+        index: idx
       }
 
       scene.add(mesh)
@@ -119,10 +120,23 @@ export default function FloodBeams({ scene, registerAnimated }) {
       const elapsed = performance.now() - startMs
       const globalFade = Math.min(elapsed / FADE_IN_MS, 1.0)
 
-      beams.forEach(({ mat, phase }) => {
-        // Pulsing height handled via scaleY in the update loop
+      beams.forEach(({ mesh, mat, phase }, idx) => {
+        // Read live precipitation from Open-Meteo if available
+        let rainVal = 0.0
+        if (realtimeData && realtimeData[idx]) {
+          rainVal = realtimeData[idx].precipitation
+        }
+        
+        // Dynamically scale Y height based on live precipitation amount (0.0 to 10.0 mm)
+        // Dormant height is 0.25, fully active rain height is 1.50
+        const targetScaleY = 0.25 + 1.25 * Math.min(rainVal / 10.0, 1.0)
+
+        // Pulse animation
         const pulse = 0.6 + 0.4 * Math.abs(Math.sin(t * 0.9 + phase * Math.PI * 2))
         mat.uniforms.uOpacity.value = pulse * globalFade
+
+        // Smoothly interpolate the scale towards the target scale (lerp)
+        mesh.scale.set(1.0, THREE.MathUtils.lerp(mesh.scale.y, targetScaleY, 0.05), 1.0)
       })
     })
 
@@ -144,7 +158,7 @@ export default function FloodBeams({ scene, registerAnimated }) {
       }
       requestAnimationFrame(fadeOut)
     }
-  }, [scene]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [scene, realtimeData]) // eslint-disable-line react-hooks/exhaustive-deps
 
   return null
 }
