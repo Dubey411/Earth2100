@@ -284,7 +284,8 @@ export default function EarthGlobe() {
   const signalHtmlData = useMemo(() => {
     const pts = []
     activeSignals.forEach((sigId) => {
-      if (sigId === 'heat') return   // heat is a shader layer, not HTML dots
+      // heat + flood both use custom shader layers — no HTML dots needed
+      if (sigId === 'heat' || sigId === 'flood') return
       const hotspots = SIGNAL_HOTSPOT_DATA[sigId]
       if (!hotspots) return
       const intensity = signalIntensity[sigId] ?? 1.0
@@ -293,10 +294,13 @@ export default function EarthGlobe() {
     return pts
   }, [activeSignals, signalIntensity])
 
+  // Hide location pins during flood mode — FloodLayer provides richer visuals
+  const isFloodActive = activeSignals.has('flood')
+
   const allHtmlData = useMemo(() => [
-    ...HOTSPOTS.map((h) => ({ ...h, _type: 'location' })),
+    ...(!isFloodActive ? HOTSPOTS.map((h) => ({ ...h, _type: 'location' })) : []),
     ...signalHtmlData.map((h) => ({ ...h, _type: 'signal' })),
-  ], [signalHtmlData])
+  ], [signalHtmlData, isFloodActive])
 
   const buildSignalEl = useCallback(
     (d) => buildSignalHotspot(d, d._sigId, d._intensity ?? 1.0),
