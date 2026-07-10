@@ -26,6 +26,7 @@ import { addCloudLayer,
 import worldCountries from '../../../geojson/world.geo.json/countries.geo.json'
 import FloodLayer from './FloodLayer/index.jsx'
 import ElNinoLayer from './ElNinoLayer/index.jsx'
+import StormLayer from './StormLayer/index.jsx'
 
 const INITIAL_SIZE = { w: window.innerWidth, h: window.innerHeight }
 
@@ -279,8 +280,8 @@ export default function EarthGlobe() {
   const signalHtmlData = useMemo(() => {
     const pts = []
     activeSignals.forEach((sigId) => {
-      // heat + flood both use custom shader layers — no HTML dots needed
-      if (sigId === 'heat' || sigId === 'flood') return
+      // heat, flood, enso, storm all use custom shader layers — no HTML dots needed
+      if (sigId === 'heat' || sigId === 'flood' || sigId === 'enso' || sigId === 'storm') return
       const hotspots = SIGNAL_HOTSPOT_DATA[sigId]
       if (!hotspots) return
       const intensity = signalIntensity[sigId] ?? 1.0
@@ -358,6 +359,12 @@ export default function EarthGlobe() {
           globe={globeInstance}
           scene={globeInstance.scene()}
           maskTexture={maskTexture}
+        />
+      )}
+      {globeInstance && activeSignals.has('storm') && (
+        <StormLayer
+          globe={globeInstance}
+          scene={globeInstance.scene()}
         />
       )}
       <style>{SIGNAL_ANIMATION_STYLES}</style>
