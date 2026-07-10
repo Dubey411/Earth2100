@@ -27,6 +27,7 @@ import worldCountries from '../../../geojson/world.geo.json/countries.geo.json'
 import FloodLayer from './FloodLayer/index.jsx'
 import ElNinoLayer from './ElNinoLayer/index.jsx'
 import StormLayer from './StormLayer/index.jsx'
+import AirPollutionLayer from './AirPollutionLayer/index.jsx'
 
 const INITIAL_SIZE = { w: window.innerWidth, h: window.innerHeight }
 
@@ -278,25 +279,18 @@ export default function EarthGlobe() {
   }, [])
 
   const signalHtmlData = useMemo(() => {
-    const pts = []
-    activeSignals.forEach((sigId) => {
-      // heat, flood, enso, storm all use custom shader layers — no HTML dots needed
-      if (sigId === 'heat' || sigId === 'flood' || sigId === 'enso' || sigId === 'storm') return
-      const hotspots = SIGNAL_HOTSPOT_DATA[sigId]
-      if (!hotspots) return
-      const intensity = signalIntensity[sigId] ?? 1.0
-      hotspots.forEach((hp) => pts.push({ ...hp, _sigId: sigId, _intensity: intensity }))
-    })
-    return pts
-  }, [activeSignals, signalIntensity])
+    // All active signals (heat, flood, air, storm, enso) now use custom animated layers.
+    // Return empty array to completely remove all old HTML hotspot dots.
+    return []
+  }, [])
 
-  // Hide location pins during flood mode — FloodLayer provides richer visuals
-  const isFloodActive = activeSignals.has('flood')
+  // Hide location pins when any climate signal is active to keep the view focused on the animations
+  const hasActiveSignal = activeSignals.size > 0
 
   const allHtmlData = useMemo(() => [
-    ...(!isFloodActive ? HOTSPOTS.map((h) => ({ ...h, _type: 'location' })) : []),
+    ...(!hasActiveSignal ? HOTSPOTS.map((h) => ({ ...h, _type: 'location' })) : []),
     ...signalHtmlData.map((h) => ({ ...h, _type: 'signal' })),
-  ], [signalHtmlData, isFloodActive])
+  ], [signalHtmlData, hasActiveSignal])
 
   const buildSignalEl = useCallback(
     (d) => buildSignalHotspot(d, d._sigId, d._intensity ?? 1.0),
@@ -363,6 +357,12 @@ export default function EarthGlobe() {
       )}
       {globeInstance && activeSignals.has('storm') && (
         <StormLayer
+          globe={globeInstance}
+          scene={globeInstance.scene()}
+        />
+      )}
+      {globeInstance && activeSignals.has('air') && (
+        <AirPollutionLayer
           globe={globeInstance}
           scene={globeInstance.scene()}
         />
