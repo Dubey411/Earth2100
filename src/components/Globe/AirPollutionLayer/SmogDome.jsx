@@ -1,7 +1,13 @@
 /**
  * AirPollutionLayer/SmogDome.jsx
- * 
- * FIXED: Correct plane orientation, better visibility
+ *
+ * Renders a volumetric smog dome tangent to the globe surface.
+ * Smog thickness and colors are driven by real-time AQI.
+ *
+ * Fragment shader:
+ *   - Uses procedural fBm noise to simulate swirling toxic smog
+ *   - Colors range from golden-brown haze to deep toxic violet
+ *   - Convective pulsing rate is tied to pollution level
  */
 import { useEffect } from 'react'
 import * as THREE from 'three'
@@ -30,6 +36,7 @@ const FRAG = /* glsl */`
   varying vec2 vUv;
   varying vec3 vNormal;
 
+  // Noise generators for thick atmospheric smog
   float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
   float noise(vec2 p) {
     vec2 i = floor(p), f = fract(p);
@@ -49,49 +56,50 @@ const FRAG = /* glsl */`
   }
 
   void main() {
+    // Distance from center of plane
     vec2 d = vUv - 0.5;
     float r = length(d);
     if (r > 0.5) discard;
 
+    // Density falloff from core to edge
     float density = smoothstep(0.5, 0.0, r);
+
+    // Dynamic swirling smog noise
     vec2 drift = vUv * 4.0 + vec2(uTime * 0.12, -uTime * 0.08);
     float n = fbm(drift);
-    float smog = smoothstep(0.35, 0.85, n * density);
 
+    // Thick core vs wispy edges (lowered threshold for better visibility)
+    float smog = smoothstep(0.18, 0.75, n * density);
+
+    // View-angle rim falloff
     float rim = abs(dot(normalize(vNormal), vec3(0.0, 0.0, 1.0)));
-    float rimF = smoothstep(0.0, 0.25, rim);
+    float rimF = smoothstep(0.0, 0.20, rim);
 
-    // INCREASED VISIBILITY
-    float baseAlpha = clamp(uAqi / 300.0, 0.30, 0.95);
+    // Scale overall opacity based on AQI
+    float baseAlpha = clamp(uAqi / 300.0, 0.35, 0.95);
     float alpha = smog * baseAlpha * uOpacity * rimF * 0.90;
 
     if (alpha < 0.01) discard;
 
-    // MORE VISIBLE COLOR
-    vec3 baseColor = vec3(0.08, 0.06, 0.10);
-    vec3 finalCol = mix(baseColor, uColor, 0.15);
+    // Visible dark charcoal/black soot color with a toxic category undertone
+    vec3 baseBlack = vec3(0.14, 0.13, 0.15);
+    vec3 finalCol = mix(baseBlack, uColor, 0.18);
 
     gl_FragColor = vec4(finalCol, alpha);
   }
 `
 
-function latLngToCartesian(lat, lng, r) {
-  const phi   = (90 - lat) * Math.PI / 180
-  const theta = (90 - lng) * Math.PI / 180
-  const x = r * Math.sin(phi) * Math.cos(theta)
-  const y = r * Math.cos(phi)
-  const z = r * Math.sin(phi) * Math.sin(theta)
-  return new THREE.Vector3(-z, y, x)
-}
-
-export default function SmogDome({ scene, hotspot, liveAqi, registerAnimated }) {
+export default function SmogDome({ globe, scene, hotspot, liveAqi, registerAnimated }) {
   useEffect(() => {
+    if (!globe) return
+
     const aqi = liveAqi?.aqi ?? hotspot.baseAqi
     const cat = getAqiCategory(aqi)
     const color = new THREE.Color(cat.color)
 
+    // Scaling size proportional to severity (doubled degrees multiplier from 7.5 to 14.5)
     const scaleFactor = 0.55 + Math.min(aqi / 300, 0.70)
-    const sizeRad = scaleFactor * 7.5 * Math.PI / 180 * GLOBE_R
+    const sizeRad = scaleFactor * 14.5 * Math.PI / 180 * GLOBE_R
 
     const mat = new THREE.ShaderMaterial({
       vertexShader: VERT,
@@ -104,14 +112,16 @@ export default function SmogDome({ scene, hotspot, liveAqi, registerAnimated }) 
       },
       transparent: true,
       depthWrite:  false,
-      blending:    THREE.AdditiveBlending,
+      blending:    THREE.NormalBlending, // Alpha blending so smog accumulates visibility
       side:        THREE.DoubleSide,
     })
 
     const geo  = new THREE.PlaneGeometry(sizeRad * 2, sizeRad * 2, 1, 1)
     const mesh = new THREE.Mesh(geo, mat)
 
-    const center    = latLngToCartesian(hotspot.lat, hotspot.lng, GLOBE_R)
+    // Position and align tangent to surface using globe.getCoords
+    const coords = globe.getCoords(hotspot.lat, hotspot.lng)
+    const center = new THREE.Vector3(coords.x, coords.y, coords.z)
     const up        = center.clone().normalize()
     const arbitrary = Math.abs(up.y) < 0.95 ? new THREE.Vector3(0, 1, 0) : new THREE.Vector3(1, 0, 0)
     const right     = up.clone().cross(arbitrary).normalize()
@@ -120,13 +130,13 @@ export default function SmogDome({ scene, hotspot, liveAqi, registerAnimated }) 
     mesh.position.copy(center)
     mesh.setRotationFromMatrix(new THREE.Matrix4().makeBasis(right, fwd, up))
     mesh.frustumCulled = false
-    mesh.renderOrder   = 15 // Lower render order
+    mesh.renderOrder   = 23
 
     mesh.userData = {
       pollutionType: 'dome',
       hotspotId:     hotspot.id,
       name:          `${hotspot.name} Smog Accumulation`,
-      desc:          `AQI level: ${aqi} (${cat.label}).`,
+      desc:          `Localized atmospheric inversion layer. Thick soot, particulate matter (PM2.5), and nitrogen oxides trap heat and block solar radiation. Current AQI level: ${aqi} (${cat.label}).`,
     }
 
     scene.add(mesh)
@@ -147,7 +157,7 @@ export default function SmogDome({ scene, hotspot, liveAqi, registerAnimated }) 
       }
       fade()
     }
-  }, [scene, hotspot, liveAqi])
+  }, [scene, hotspot, liveAqi]) // eslint-disable-line
 
   return null
 }

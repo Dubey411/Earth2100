@@ -1,14 +1,18 @@
 /**
  * AirPollutionLayer/SootDrift.jsx
- * 
- * FIXED: Correct particle position, better visibility
+ *
+ * Simulates micro-particulate (PM2.5) soot and dust drifting eastward
+ * due to atmospheric winds.
+ *
+ * Coordinates are mapped 100% correctly using globe.getCoords and tangent plane vectors
+ * to prevent any rotation/hemisphere offsets.
  */
 import { useEffect } from 'react'
 import * as THREE from 'three'
 
 const MIN_R = 100.8
 const MAX_R = 102.3
-const EMITTER_COUNT = 150
+const EMITTER_COUNT = 300
 const FADE_MS = 1000
 
 const VERT = /* glsl */`
@@ -20,40 +24,48 @@ const VERT = /* glsl */`
 
   uniform float uTime;
   uniform float uOpacity;
-  uniform float uBaseLat;
-  uniform float uBaseLng;
   uniform float uAqi;
+
+  // Tangent plane basis uniforms
+  uniform vec3 uCenter;
+  uniform vec3 uRight;
+  uniform vec3 uFwd;
+  uniform vec3 uUp;
 
   varying float vAlpha;
 
   void main() {
+    // Progression of particle life [0, 1)
     float phase = mod(uTime * aSpeed + aBirthPhase, 1.0);
-    float r = mix(${MIN_R.toFixed(2)}, ${MAX_R.toFixed(2)}, phase);
-    float driftLng = phase * 7.5;
-    float driftLat = phase * (aLatOffset * 0.4);
 
-    float lat = uBaseLat + aLatOffset + driftLat;
-    float lng = uBaseLng + aLngOffset + driftLng;
+    // Altitude rise above the surface
+    float rOffset = (mix(${MIN_R.toFixed(2)}, ${MAX_R.toFixed(2)}, phase) - 100.8);
 
-    float phi   = (90.0 - lat) * 3.14159 / 180.0;
-    float theta = (90.0 - lng) * 3.14159 / 180.0;
+    // Drift trajectory (eastward wind carrying particulates)
+    // Drift distance scales with phase.
+    float driftLng = phase * 7.5; // drift 7.5 degrees east
+    float driftLat = phase * (aLatOffset * 0.4); // slight dispersion
 
-    vec3 pos = vec3(
-      r * sin(phi) * cos(theta),
-      r * cos(phi),
-      r * sin(phi) * sin(theta)
-    );
+    // 1 degree on Earth is approx 1.745 units (radius 100)
+    float unitPerDegree = 1.745;
+    float localRight = (aLngOffset + driftLng) * unitPerDegree;
+    float localFwd   = (aLatOffset + driftLat) * unitPerDegree;
 
-    // ✅ FIXED: Correct rotation for globe Y = -PI/2
-    vec3 rotatedPos = vec3(-pos.z, pos.y, pos.x);
+    // Displace center along basis vectors
+    vec3 pos = uCenter + localRight * uRight + localFwd * uFwd + rOffset * uUp;
 
-    gl_Position = projectionMatrix * modelViewMatrix * vec4(rotatedPos, 1.0);
+    gl_Position = projectionMatrix * modelViewMatrix * vec4(pos, 1.0);
+
+    // Particle sizes (larger as they expand/disperse)
     gl_PointSize = aSize * mix(1.2, 3.4, phase);
 
+    // Fade-in at emission, fade-out at dispersion limit
     float fadeIn = smoothstep(0.0, 0.12, phase);
     float fadeOut = 1.0 - smoothstep(0.70, 1.0, phase);
+
+    // Base alpha scales with AQI
     float aqiFrac = clamp(uAqi / 350.0, 0.30, 1.0);
-    vAlpha = fadeIn * fadeOut * aqiFrac * uOpacity * 0.85;
+    vAlpha = fadeIn * fadeOut * aqiFrac * uOpacity * 0.75;
   }
 `
 
@@ -67,13 +79,17 @@ const FRAG = /* glsl */`
     if (dist > 0.5) discard;
 
     float glow = smoothstep(0.5, 0.10, dist);
-    vec3 color = vec3(0.02, 0.02, 0.03);
+    // Dark carbon black soot/ash particle color (rendered as visible dark ash-grey)
+    vec3 color = vec3(0.18, 0.17, 0.19);
+
     gl_FragColor = vec4(color, glow * vAlpha);
   }
 `
 
-export default function SootDrift({ scene, hotspot, liveAqi, registerAnimated }) {
+export default function SootDrift({ globe, scene, hotspot, liveAqi, registerAnimated }) {
   useEffect(() => {
+    if (!globe) return
+
     const count = EMITTER_COUNT
     const latOffsets  = new Float32Array(count)
     const lngOffsets  = new Float32Array(count)
@@ -82,13 +98,14 @@ export default function SootDrift({ scene, hotspot, liveAqi, registerAnimated })
     const sizes       = new Float32Array(count)
 
     for (let i = 0; i < count; i++) {
-      const r = Math.pow(Math.random(), 1.5) * 1.5
+      // Concentrated at the center cone
+      const r = Math.pow(Math.random(), 1.5) * 1.5 // dense at core
       const angle = Math.random() * Math.PI * 2
       latOffsets[i]  = r * Math.sin(angle)
       lngOffsets[i]  = r * Math.cos(angle)
       birthPhases[i] = Math.random()
       speeds[i]      = 0.18 + Math.random() * 0.16
-      sizes[i]       = 1.5 + Math.random() * 2.5
+      sizes[i]       = 2.2 + Math.random() * 3.8
     }
 
     const geo = new THREE.BufferGeometry()
@@ -101,30 +118,39 @@ export default function SootDrift({ scene, hotspot, liveAqi, registerAnimated })
 
     const aqi = liveAqi?.aqi ?? hotspot.baseAqi
 
+    // Position and tangent basis vectors using globe.getCoords
+    const coords = globe.getCoords(hotspot.lat, hotspot.lng)
+    const center = new THREE.Vector3(coords.x, coords.y, coords.z)
+    const up        = center.clone().normalize()
+    const arbitrary = Math.abs(up.y) < 0.95 ? new THREE.Vector3(0, 1, 0) : new THREE.Vector3(1, 0, 0)
+    const right     = up.clone().cross(arbitrary).normalize()
+    const fwd       = up.clone().cross(right).normalize()
+
     const mat = new THREE.ShaderMaterial({
       vertexShader:   VERT,
       fragmentShader: FRAG,
       uniforms: {
         uTime:     { value: 0 },
         uOpacity:  { value: 0 },
-        uBaseLat:  { value: hotspot.lat },
-        uBaseLng:  { value: hotspot.lng },
         uAqi:      { value: aqi },
+        uCenter:   { value: center },
+        uRight:    { value: right },
+        uFwd:      { value: fwd },
+        uUp:       { value: up },
       },
       transparent: true,
       depthWrite:  false,
-      blending:    THREE.AdditiveBlending,
+      blending:    THREE.NormalBlending,
     })
 
     const points = new THREE.Points(geo, mat)
     points.frustumCulled = false
-    points.renderOrder   = 16 // Lower render order
-
+    points.renderOrder   = 24
     points.userData = {
       pollutionType: 'drift',
       hotspotId:     hotspot.id,
       name:          `${hotspot.name} PM2.5 Dispersion`,
-      desc:          `Microscopic fine particles suspended in air currents.`,
+      desc:          `Microscopic fine particles (diameter < 2.5 micrometers) suspended in air currents. Wind carries this particulate plume downwind, posing respiratory health risks for thousands of square kilometers.`,
     }
 
     scene.add(points)
@@ -145,7 +171,7 @@ export default function SootDrift({ scene, hotspot, liveAqi, registerAnimated })
       }
       fade()
     }
-  }, [scene, hotspot, liveAqi])
+  }, [globe, scene, hotspot, liveAqi]) // eslint-disable-line
 
   return null
 }

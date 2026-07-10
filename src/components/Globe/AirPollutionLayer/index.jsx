@@ -121,12 +121,14 @@ export default function AirPollutionLayer({ globe, scene }) {
         return (
           <group key={hotspot.id}>
             <SmogDome
+              globe={globe}
               scene={scene}
               hotspot={hotspot}
               liveAqi={liveAqi}
               registerAnimated={registerAnimated}
             />
             <SootDrift
+              globe={globe}
               scene={scene}
               hotspot={hotspot}
               liveAqi={liveAqi}
