@@ -2,15 +2,16 @@
  * AirPollutionLayer/index.jsx — Air Pollution Layer Coordinator.
  *
  * Real-time integration:
- *   On mount, fetches live PM2.5 and AQI data for Delhi, Beijing,
- *   Lahore, Jakarta, and Mexico City from the Open-Meteo Air Quality API.
- *   
+ *   🇮🇳 Delhi: CPCB (data.gov.in) — Official Ministry of Environment, India
+ *               Averages PM2.5 readings from all monitoring stations in the city.
+ *   🌍 Others:  Open-Meteo Air Quality API (Beijing, Jakarta, Mexico City, Lahore)
+ *
  * Renders:
  *   - SmogDome: Procedural toxic haze domes tangent to the globe surface.
- *   - SootDrift: 150 rising and drifting particulate wind vectors.
+ *   - SootDrift: 300 rising and drifting particulate wind vectors.
  *   - Raycasting interaction: Click to display a detailed AQI readout HUD panel.
  */
-import { useEffect, useRef, useCallback, useState } from 'react'
+import React, { useEffect, useRef, useCallback, useState } from 'react'
 import * as THREE from 'three'
 import { POLLUTION_HOTSPOTS, fetchLiveAqi, getAqiCategory } from './constants'
 import SmogDome  from './SmogDome'
@@ -43,11 +44,11 @@ export default function AirPollutionLayer({ globe, scene }) {
     return () => cancelAnimationFrame(rafId)
   }, [])
 
-  // ── 🌐 Fetch live Open-Meteo AQI data for all hotspots ──────────────────────
+  // ── 🌐 Fetch live AQI — CPCB for India, Open-Meteo for the rest ──────────
   useEffect(() => {
     setLoading(true)
     const promises = POLLUTION_HOTSPOTS.map((hotspot) =>
-      fetchLiveAqi(hotspot.lat, hotspot.lng).then((res) => ({
+      fetchLiveAqi(hotspot).then((res) => ({
         id: hotspot.id,
         data: res,
       }))
@@ -119,7 +120,7 @@ export default function AirPollutionLayer({ globe, scene }) {
       {POLLUTION_HOTSPOTS.map((hotspot) => {
         const liveAqi = liveAqiCache[hotspot.id]
         return (
-          <group key={hotspot.id}>
+          <React.Fragment key={hotspot.id}>
             <SmogDome
               globe={globe}
               scene={scene}
@@ -134,7 +135,7 @@ export default function AirPollutionLayer({ globe, scene }) {
               liveAqi={liveAqi}
               registerAnimated={registerAnimated}
             />
-          </group>
+          </React.Fragment>
         )
       })}
 
@@ -167,14 +168,14 @@ export default function AirPollutionLayer({ globe, scene }) {
         }} />
         <div>
           <div style={{ fontSize: '7px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '1.2px', color: '#64748b' }}>
-            GLOBAL AQI MONITOR
+            CPCB · Open-Meteo · LIVE
           </div>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px' }}>
             <span style={{ fontSize: '12px', fontWeight: 700, color: '#b08eee' }}>
-              {loading ? 'Connecting to Open-Meteo…' : 'AQI Plumes Active'}
+              {loading ? 'Connecting to CPCB…' : 'AQI Plumes Active'}
             </span>
             <span style={{ fontSize: '9px', color: '#94a3b8' }}>
-              · Live PM2.5 sensors
+              · Real-time PM2.5 stations
             </span>
           </div>
         </div>
@@ -222,33 +223,31 @@ export default function AirPollutionLayer({ globe, scene }) {
           </p>
 
           {/* Sensory Readings */}
-          <div style={{
-            display: 'flex',
-            gap: '6px',
-            marginTop: '8px',
-            flexWrap: 'wrap',
-          }}>
-            <div style={{
-              background: 'rgba(255,255,255,0.04)',
-              border: '1px solid rgba(255,255,255,0.06)',
-              borderRadius: '4px',
-              padding: '3px 7px',
-              fontSize: '8.5px',
-            }}>
+          <div style={{ display: 'flex', gap: '6px', marginTop: '8px', flexWrap: 'wrap' }}>
+            <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '4px', padding: '3px 7px', fontSize: '8.5px' }}>
               <span style={{ color: '#64748b', marginRight: '4px' }}>US AQI</span>
               <span style={{ color: selectedCat.color, fontWeight: 700 }}>{selectedAqi}</span>
             </div>
-            <div style={{
-              background: 'rgba(255,255,255,0.04)',
-              border: '1px solid rgba(255,255,255,0.06)',
-              borderRadius: '4px',
-              padding: '3px 7px',
-              fontSize: '8.5px',
-            }}>
+            <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '4px', padding: '3px 7px', fontSize: '8.5px' }}>
               <span style={{ color: '#64748b', marginRight: '4px' }}>PM2.5</span>
               <span style={{ color: '#ffffff', fontWeight: 700 }}>{selectedPm25.toFixed(1)} µg/m³</span>
             </div>
+            {/* Data source badge */}
+            {liveAqiCache[selectedInfo.hotspot.id]?.source && (
+              <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '4px', padding: '3px 7px', fontSize: '8.5px' }}>
+                <span style={{ color: '#64748b', marginRight: '4px' }}>SRC</span>
+                <span style={{ color: liveAqiCache[selectedInfo.hotspot.id]?.source === 'CPCB' ? '#22c55e' : '#60a5fa', fontWeight: 700 }}>
+                  {liveAqiCache[selectedInfo.hotspot.id]?.source}
+                </span>
+              </div>
+            )}
           </div>
+          {/* Station count + last update for CPCB */}
+          {liveAqiCache[selectedInfo.hotspot.id]?.stationCount && (
+            <div style={{ marginTop: '5px', fontSize: '8px', color: '#475569' }}>
+              📡 {liveAqiCache[selectedInfo.hotspot.id].stationCount} monitoring stations · {liveAqiCache[selectedInfo.hotspot.id]?.lastUpdate}
+            </div>
+          )}
         </div>
       )}
 
