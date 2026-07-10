@@ -1,4 +1,4 @@
-﻿import { useState } from 'react'
+import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { SIGNALS } from '../../data/signals.js'
 import useClimateStore from '../../store/useClimateStore.js'
@@ -15,6 +15,7 @@ const SIGNAL_PALETTES = {
   sealevel: ['#00bfff', '#00ffff', '#80ffff'],
   enso:     ['#ff5c00', '#ff8c00', '#ffb347', '#ffd700'],
   storm:    ['#cc66ff', '#dd88ff', '#eeb0ff'],
+  solar:    ['#ffdd00', '#ffaa00', '#ff7700', '#ff3300'],
 }
 
 /* â”€â”€â”€ Hotspot counts per signal â”€â”€ */
@@ -29,20 +30,23 @@ const SIGNAL_HOTSPOT_COUNTS = {
   sealevel: 6,
   enso:     4,
   storm:    4,
+  solar:    1,
 }
 
 /* â”€â”€â”€ Animation labels â”€â”€ */
 const ANIM_LABELS = {
   heat:     'Thermal field · 8s',
   flood:    'Ripple Â· 2.2s',
-  wildfire: 'Flicker Â· 0.4s',
-  drought:  'Diffuse Â· slow',
-  cryo:     'Breathe Â· 3.5s',
-  air:      'Haze Â· drift',
-  forest:   'Blink Â· 1.2s',
+  flood:    'Ripple · 2.2s',
+  wildfire: 'Flicker · 0.4s',
+  drought:  'Diffuse · slow',
+  cryo:     'Breathe · 3.5s',
+  air:      'Haze · drift',
+  forest:   'Blink · 1.2s',
   sealevel: 'Coast edge',
-  enso:     'Current Â· 2.8s',
-  storm:    'Spin Â· 1.8s',
+  enso:     'Current · 2.8s',
+  storm:    'Spin · 1.8s',
+  solar:    'Aurora · wave',
 }
 
 // Collapsed signal button (left rail icon pill)

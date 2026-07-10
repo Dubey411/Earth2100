@@ -37,4 +37,11 @@ export const SIGNALS = [
     color: '#ffb347',
     description: 'El Niño / La Niña Pacific Ocean warming and cooling current patterns.',
   },
+  {
+    id: 'solar',
+    label: 'Solar Storm',
+    icon: '☀️',
+    color: '#ffaa00',
+    description: 'Coronal mass ejection (CME) impact — solar wind colliding with Earth\'s magnetosphere, creating intense auroras.',
+  },
 ]

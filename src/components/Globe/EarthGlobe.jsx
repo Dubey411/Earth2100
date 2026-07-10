@@ -28,6 +28,7 @@ import FloodLayer from './FloodLayer/index.jsx'
 import ElNinoLayer from './ElNinoLayer/index.jsx'
 import StormLayer from './StormLayer/index.jsx'
 import AirPollutionLayer from './AirPollutionLayer/index.jsx'
+import SolarStormLayer from './SolarStormLayer/index.jsx'
 
 const INITIAL_SIZE = { w: window.innerWidth, h: window.innerHeight }
 
@@ -363,6 +364,12 @@ export default function EarthGlobe() {
       )}
       {globeInstance && activeSignals.has('air') && (
         <AirPollutionLayer
+          globe={globeInstance}
+          scene={globeInstance.scene()}
+        />
+      )}
+      {globeInstance && activeSignals.has('solar') && (
+        <SolarStormLayer
           globe={globeInstance}
           scene={globeInstance.scene()}
         />
