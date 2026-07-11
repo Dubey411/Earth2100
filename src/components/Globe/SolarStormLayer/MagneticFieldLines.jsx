@@ -1,27 +1,30 @@
 /**
  * SolarStormLayer/MagneticFieldLines.jsx
  *
- * Renders 3D magnetic field lines (dipole lines) looping from the South Pole
- * to the North Pole.
+ * Renders THICK, GLOWING magnetic field lines (dipole lines) looping from
+ * South Pole to North Pole.
  *
  * Dynamics:
  *   - The field lines are dynamically distorted to match the magnetosphere:
  *     compressed on the sun-facing side (+X/+Y), stretched on the tail side (-X/-Y).
- *   - Uses a custom ShaderMaterial to animate glowing packets of energy (pulses)
+ *   - Uses TubeGeometry for 3D visual thickness.
+ *   - Custom ShaderMaterial animates glowing packets of energy (pulses)
  *     flowing along the field lines from South to North.
  */
-import { useEffect, useRef } from 'react'
+import React, { useEffect, useRef } from 'react'
 import * as THREE from 'three'
 
 const EARTH_R = 100.0
-const FADE_MS = 1200
+const FADE_MS = 800
 
-// Shaders for the line segments
+// ── Shader for glowing lines ──────────────────────────────────────────────
 const VERT = /* glsl */`
-  attribute float aT; // normalized distance along the curve [0..1]
+  attribute float aT;
   varying float vT;
+  varying vec3 vPosition;
   void main() {
     vT = aT;
+    vPosition = position;
     gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
   }
 `
@@ -33,54 +36,55 @@ const FRAG = /* glsl */`
   uniform float uIntensity;
 
   varying float vT;
+  varying vec3 vPosition;
 
   void main() {
-    // Flowing dash pulse from South (vT=0) to North (vT=1)
-    // 3 pulses along the line, moving at speed 1.8
-    float speed = 1.8;
-    float pulse = smoothstep(0.18, 0.0, abs(fract(vT * 3.0 - uTime * speed) - 0.5));
+    // ── 3 moving pulses along the line ─────────────────────────────────────
+    float speed = 1.2;
+    float pulse1 = smoothstep(0.15, 0.0, abs(fract(vT * 2.0 - uTime * speed) - 0.5));
+    float pulse2 = smoothstep(0.15, 0.0, abs(fract(vT * 2.0 - uTime * speed + 0.5) - 0.5));
+    float pulse = max(pulse1, pulse2);
 
-    // Base color: pale cyan/blue
-    vec3 baseColor = vec3(0.20, 0.65, 1.0);
-    // Pulse color: glowing white/light cyan
-    vec3 pulseColor = vec3(0.70, 0.95, 1.0);
+    // ── Color: bright cyan/blue with white pulses ──────────────────────────
+    vec3 baseColor = vec3(0.15, 0.55, 0.95);  // Bright blue
+    vec3 pulseColor = vec3(0.80, 0.95, 1.0);  // White-cyan
+    vec3 finalColor = mix(baseColor, pulseColor, pulse * 0.8);
 
-    vec3 finalColor = mix(baseColor, pulseColor, pulse * 0.70);
+    // ── Brightness boost ──────────────────────────────────────────────────
+    float brightness = 0.5 + 0.5 * uIntensity;
 
-    // Alpha: fade out near the poles to blend cleanly, and scale with uOpacity/uIntensity
-    float edgeFade = smoothstep(0.0, 0.15, vT) * (1.0 - smoothstep(0.85, 1.0, vT));
-    float alpha = (0.15 + pulse * 0.35) * edgeFade * uOpacity * (0.6 + uIntensity * 0.4);
+    // ── Fade at poles ──────────────────────────────────────────────────────
+    float poleFade = smoothstep(0.0, 0.12, vT) * (1.0 - smoothstep(0.88, 1.0, vT));
 
-    if (alpha < 0.005) discard;
+    // ── Alpha: HIGHER visibility ──────────────────────────────────────────
+    float alpha = (0.20 + pulse * 0.50) * poleFade * uOpacity * brightness;
 
-    gl_FragColor = vec4(finalColor, alpha);
+    if (alpha < 0.01) discard;
+
+    gl_FragColor = vec4(finalColor * brightness, alpha);
   }
 `
 
-/**
- * Generates a single dipole loop curve from South Pole to North Pole,
- * distorted by the solar wind alignment.
- */
+// ── Generate dipole field line points ──────────────────────────────────────
 function generateFieldLine(angleY, maxDist, intensity) {
   const points = []
-  const steps = 60
-  const windDir = new THREE.Vector3(1.0, 0.6, 0.6).normalize()
+  const steps = 50
+  
+  // Solar wind direction (compression side)
+  const windDir = new THREE.Vector3(1.0, 0.5, 0.5).normalize()
 
   for (let i = 0; i <= steps; i++) {
     const t = i / steps
-    // Angle from South Pole (0) to North Pole (PI)
     const theta = t * Math.PI
 
-    // Dipole equation: r = R_earth * maxDist * sin(theta)
-    // South/North poles are at theta = 0, PI (r = 0, but offset to Earth radius)
     const sinTheta = Math.sin(theta)
     const r = EARTH_R + (maxDist - 1.0) * EARTH_R * sinTheta * sinTheta
 
-    // Local 3D point in the loop plane (Z-up orientation for curve math)
+    // Local position in loop plane
     const localX = r * sinTheta
     const localY = -r * Math.cos(theta)
 
-    // Rotate loop around the Y-axis
+    // Rotate around Y
     const x = localX * Math.cos(angleY)
     const y = localY
     const z = localX * Math.sin(angleY)
@@ -89,7 +93,7 @@ function generateFieldLine(angleY, maxDist, intensity) {
     const dir = pos.clone().normalize()
     const alignment = dir.dot(windDir)
 
-    // Apply the exact same distortion as the Magnetosphere
+    // Apply distortion (compression on sun side, stretch on tail)
     if (alignment > 0.0) {
       const compression = 1.0 - 0.28 * alignment * (0.85 + intensity * 0.15)
       pos.multiplyScalar(compression)
@@ -103,6 +107,7 @@ function generateFieldLine(angleY, maxDist, intensity) {
   return points
 }
 
+// ── Component ──────────────────────────────────────────────────────────────
 export default function MagneticFieldLines({ scene, globalTime, intensity = 1.0, registerAnimated }) {
   const groupRef = useRef(null)
 
@@ -112,7 +117,7 @@ export default function MagneticFieldLines({ scene, globalTime, intensity = 1.0,
     scene.add(group)
     groupRef.current = group
 
-    // Shared ShaderMaterial for all field lines
+    // ── Shared material ──────────────────────────────────────────────────────
     const mat = new THREE.ShaderMaterial({
       vertexShader: VERT,
       fragmentShader: FRAG,
@@ -122,15 +127,12 @@ export default function MagneticFieldLines({ scene, globalTime, intensity = 1.0,
         uIntensity: { value: intensity },
       },
       transparent: true,
-      depthWrite:  false,
-      blending:    THREE.AdditiveBlending,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending,
     })
 
-    // Generate 12 loops rotated around the Y-axis
     const numLoops = 12
-    // For each loop, draw 3 concentric field lines of increasing size
-    const distances = [1.18, 1.45, 1.75]
-
+    const distances = [1.25, 1.55, 1.90] // Field line radii (Earth multiples)
     const geometriesToDispose = []
 
     for (let i = 0; i < numLoops; i++) {
@@ -139,38 +141,38 @@ export default function MagneticFieldLines({ scene, globalTime, intensity = 1.0,
       distances.forEach((maxDist) => {
         const points = generateFieldLine(angleY, maxDist, intensity)
 
-        // Convert points to buffer attributes for custom shader mapping (aT)
-        const count = points.length
-        const vertices = new Float32Array(count * 3)
-        const aTAttr   = new Float32Array(count)
-
+        // ── Convert to TubeGeometry (THICK lines) ──────────────────────────
+        const curve = new THREE.CatmullRomCurve3(points)
+        const tubeGeo = new THREE.TubeGeometry(curve, 48, 0.35, 8, false)
+        
+        // ── Transfer aT attribute for shader ──────────────────────────────
+        const count = tubeGeo.attributes.position.count
+        const aTAttr = new Float32Array(count)
         for (let j = 0; j < count; j++) {
-          vertices[j * 3]     = points[j].x
-          vertices[j * 3 + 1] = points[j].y
-          vertices[j * 3 + 2] = points[j].z
-          aTAttr[j]           = j / (count - 1)
+          // Approximate position along curve based on vertex position
+          const yPos = tubeGeo.attributes.position.getY(j)
+          aTAttr[j] = (yPos + 150) / 300 // Normalize roughly
         }
+        tubeGeo.setAttribute('aT', new THREE.BufferAttribute(aTAttr, 1))
 
-        const geo = new THREE.BufferGeometry()
-        geo.setAttribute('position', new THREE.BufferAttribute(vertices, 3))
-        geo.setAttribute('aT',       new THREE.BufferAttribute(aTAttr, 1))
-
-        const line = new THREE.Line(geo, mat)
+        const line = new THREE.Mesh(tubeGeo, mat)
         group.add(line)
-        geometriesToDispose.push(geo)
+        geometriesToDispose.push(tubeGeo)
       })
     }
 
+    // ── Fade in ──────────────────────────────────────────────────────────────
     const startMs = performance.now()
     const unregister = registerAnimated((t) => {
       const elapsed = (performance.now() - startMs) / FADE_MS
-      mat.uniforms.uOpacity.value   = Math.min(elapsed, 1.0)
+      mat.uniforms.uOpacity.value = Math.min(elapsed, 1.0)
       mat.uniforms.uIntensity.value = intensity
-      mat.uniforms.uTime.value      = t
+      mat.uniforms.uTime.value = t
     })
 
     return () => {
       unregister()
+      // ── Fade out ──────────────────────────────────────────────────────────
       const fade = () => {
         mat.uniforms.uOpacity.value -= 0.05
         if (mat.uniforms.uOpacity.value > 0) {
@@ -183,7 +185,7 @@ export default function MagneticFieldLines({ scene, globalTime, intensity = 1.0,
       }
       fade()
     }
-  }, [scene, intensity]) // eslint-disable-line
+  }, [scene, intensity])
 
   return null
 }
