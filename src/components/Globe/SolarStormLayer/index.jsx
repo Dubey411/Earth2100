@@ -15,6 +15,7 @@ import useClimateStore from '../../../store/useClimateStore'
 import AuroraShader   from './AuroraShader'
 import SolarParticles from './SolarParticles'
 import Magnetosphere  from './Magnetosphere'
+import MagneticFieldLines from './MagneticFieldLines'
 
 export default function SolarStormLayer({ globe, scene }) {
   const animatedRef = useRef([])
@@ -70,6 +71,11 @@ export default function SolarStormLayer({ globe, scene }) {
         registerAnimated={registerAnimated}
       />
       <Magnetosphere
+        scene={scene}
+        intensity={intensity}
+        registerAnimated={registerAnimated}
+      />
+      <MagneticFieldLines
         scene={scene}
         intensity={intensity}
         registerAnimated={registerAnimated}
