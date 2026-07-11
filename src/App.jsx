@@ -1,8 +1,6 @@
 import Topbar          from './components/Topbar/Topbar.jsx'
 import GlobeContainer  from './components/Globe/GlobeContainer.jsx'
 import ClimateSignals  from './components/Signals/ClimateSignals.jsx'
-import EarthEvents     from './components/Events/EarthEvents.jsx'
-import ClimateInspector from './components/Sidebar/ClimateInspector.jsx'
 import PlanetaryFutures from './components/Futures/PlanetaryFutures.jsx'
 import NewsTicker      from './components/Ticker/NewsTicker.jsx'
 
@@ -49,12 +47,6 @@ export default function App() {
 
       {/* ── Left rail: Climate Signals ── */}
       <ClimateSignals />
-
-      {/* ── Top-right: Earth Events ── */}
-      <EarthEvents />
-
-      {/* ── Right: Climate Inspector sidebar ── */}
-      <ClimateInspector />
 
       {/* ── Bottom drawer: Planetary Futures ── */}
       <PlanetaryFutures />
