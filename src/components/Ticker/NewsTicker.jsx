@@ -1,14 +1,63 @@
 import { useState, useEffect, useRef } from 'react'
 import { NEWS_ITEMS } from '../../data/events.js'
 
-// ─── RapidAPI Climate Change RealTime config ──────────────────────────────────
-const RAPIDAPI_KEY  = 'e6baa125femsha6d2dec29eaaf2ap103742jsnc0068006213f'
-const RAPIDAPI_HOST = 'climate-change-realtime.p.rapidapi.com'
-// Try source-specific first, fall back to generic /news if 404
-const API_URLS = [
-  `https://${RAPIDAPI_HOST}/news/theguardian`,
-  `https://${RAPIDAPI_HOST}/news/bbc-news`,
-  `https://${RAPIDAPI_HOST}/news`,
+// ─── FREE RSS-to-JSON proxy (no API key needed) ──────────────────────────────
+const RSS_PROXY = 'https://api.rss2json.com/v1/api.json?rss_url='
+
+// ─── Climate news RSS sources ──────────────────────────────────────────────────
+const RSS_SOURCES = [
+  {
+    url: 'https://www.theguardian.com/environment/climate-crisis/rss',
+    label: 'The Guardian'
+  },
+  {
+    url: 'https://feeds.bbci.co.uk/news/science_and_environment/rss.xml',
+    label: 'BBC News'
+  },
+  {
+    url: 'https://www.reutersagency.com/feed/?best-topics=climate&post_type=best',
+    label: 'Reuters'
+  },
+  {
+    url: 'https://www.climate.gov/feeds/climate-case-studies.xml',
+    label: 'NOAA Climate'
+  },
+  {
+    url: 'https://www.nasa.gov/rss/dyn/earth.rss',
+    label: 'NASA Earth'
+  }
+]
+
+// ─── Static fallback (always works) ──────────────────────────────────────────
+const FALLBACK_NEWS = [
+  '🌍 Climate Action Summit 2024: Global leaders pledge $100B for renewable energy',
+  '🧊 Arctic sea ice reaches record low for September, scientists warn of tipping point',
+  '🌲 Amazon deforestation down 30% in 2024, Brazil reports best numbers in a decade',
+  '🌊 El Niño strengthening: Pacific ocean temperatures rise 0.5°C above average',
+  '🔥 Europe heatwave: 40°C temperatures break records across 12 countries',
+  '⚡ Solar storm triggers aurora visible across northern US and Canada',
+  '🌿 New Zealand commits to 100% renewable energy by 2030',
+  '🧊 Antarctic ice shelf collapse: 500 sq km breaks away from Brunt Ice Shelf',
+  '💨 Carbon emissions from fossil fuels hit record high in 2024, IEA reports',
+  '🌊 Flood warnings issued for 12 countries in South Asia as monsoon intensifies',
+  '🌀 Typhoon Mawar strengthens to Category 5, threatens Philippines',
+  '🌡️ Global temperatures in 2024 surpass 1.5°C Paris Agreement limit',
+  '🔴 UN Secretary-General declares "climate crisis is now an emergency"',
+  '🌫️ Delhi air quality plummets to "severe" category as AQI crosses 400',
+  '🌊 Venice installs flood barriers as sea level rise threatens historic city',
+  '🔥 Canada wildfire season breaks records with 15 million hectares burned',
+  '⚡ Tesla announces world\'s largest battery storage project in Texas',
+  '🌿 Costa Rica achieves 98% renewable energy for third consecutive year',
+  '🧊 Greenland ice sheet losing ice 7 times faster than in 1990s',
+  '🌊 Miami invests $5 billion in sea wall protection against rising seas',
+  '🌀 Hurricane Beryl leaves trail of destruction across Caribbean islands',
+  '🌡️ Phoenix records 31 consecutive days above 110°F, breaking heat record',
+  '💨 China launches world\'s largest carbon trading market',
+  '🌲 Indonesia extends moratorium on new palm oil plantations',
+  '⚡ India targets 500 GW renewable energy capacity by 2030',
+  '🌊 Pacific Ocean acidification accelerating at unprecedented rate',
+  '🔥 Greece battles wildfires as temperatures soar to 45°C',
+  '🌿 EU passes landmark law to restore 20% of degraded ecosystems by 2030'
 ]
 
 // ─── Emoji mapping for live headlines ────────────────────────────────────────
@@ -48,59 +97,82 @@ function itemColor(text = '') {
   return '#9cabbe'
 }
 
-// ─── Format a single API article into a ticker string ────────────────────────
-function formatArticle(article) {
-  const title  = article.title || article.headline || article.text || ''
-  const source = article.source || article.sectionName || 'Guardian'
-  const emoji  = pickEmoji(title)
-  const shortTitle = title.length > 90 ? title.slice(0, 87) + '…' : title
-  return `${emoji} ${shortTitle} — ${source}`
+// ─── Fetch from a single RSS source ──────────────────────────────────────────
+async function fetchRSSSource(source) {
+  try {
+    const response = await fetch(`${RSS_PROXY}${encodeURIComponent(source.url)}`)
+    if (!response.ok) throw new Error(`HTTP ${response.status}`)
+    const data = await response.json()
+    if (data.status === 'ok' && data.items?.length) {
+      return data.items.map(item => ({
+        title: item.title,
+        source: source.label,
+        pubDate: item.pubDate,
+        description: item.description?.replace(/<[^>]*>/g, '').slice(0, 200) || ''
+      }))
+    }
+    return []
+  } catch (error) {
+    console.warn(`[NewsTicker] Failed to fetch from ${source.label}:`, error.message)
+    return []
+  }
 }
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 export default function NewsTicker() {
-  const [items, setItems]     = useState([...NEWS_ITEMS, ...NEWS_ITEMS, ...NEWS_ITEMS])
-  const [status, setStatus]   = useState('loading')   // 'loading' | 'live' | 'cached'
+  const [items, setItems] = useState([...FALLBACK_NEWS, ...FALLBACK_NEWS, ...FALLBACK_NEWS])
+  const [status, setStatus] = useState('loading') // 'loading' | 'live' | 'cached'
 
   useEffect(() => {
     let cancelled = false
 
     async function fetchNews() {
-      const headers = {
-        'Content-Type':    'application/json',
-        'x-rapidapi-host': RAPIDAPI_HOST,
-        'x-rapidapi-key':  RAPIDAPI_KEY,
-      }
-
-      let raw = []
-      let succeeded = false
-
       try {
-        for (const url of API_URLS) {
-          try {
-            const res = await fetch(url, { method: 'GET', headers })
-            if (!res.ok) {
-              console.warn(`[NewsTicker] ${url} → HTTP ${res.status}, trying next…`)
-              continue
-            }
-            const data = await res.json()
-            raw = Array.isArray(data)
-              ? data
-              : data.articles ?? data.news ?? data.results ?? data.data ?? []
-            if (raw.length) { succeeded = true; break }
-          } catch (innerErr) {
-            console.warn(`[NewsTicker] ${url} failed:`, innerErr.message)
-          }
-        }
+        // Try all sources in parallel
+        const results = await Promise.allSettled(
+          RSS_SOURCES.map(source => fetchRSSSource(source))
+        )
 
         if (cancelled) return
-        if (!succeeded || !raw.length) throw new Error('all endpoints exhausted')
 
-        const formatted = raw.slice(0, 30).map(formatArticle).filter(Boolean)
-        if (!formatted.length) throw new Error('no valid articles')
+        // Collect all successful items
+        let allItems = []
+        results.forEach((result, index) => {
+          if (result.status === 'fulfilled' && result.value.length) {
+            allItems = [...allItems, ...result.value]
+          }
+        })
 
-        setItems([...formatted, ...formatted, ...formatted])
-        setStatus('live')
+        // Sort by date (newest first)
+        allItems.sort((a, b) => new Date(b.pubDate) - new Date(a.pubDate))
+
+        // Remove duplicates (by title)
+        const seen = new Set()
+        const uniqueItems = allItems.filter(item => {
+          const key = item.title.slice(0, 80)
+          if (seen.has(key)) return false
+          seen.add(key)
+          return true
+        })
+
+        if (!cancelled) {
+          if (uniqueItems.length === 0) {
+            console.warn('[NewsTicker] No news fetched, using fallback')
+            setStatus('cached')
+            return
+          }
+
+          const formatted = uniqueItems.slice(0, 30).map(item => {
+            const emoji = pickEmoji(item.title)
+            const shortTitle = item.title.length > 90 ? item.title.slice(0, 87) + '…' : item.title
+            return `${emoji} ${shortTitle} — ${item.source}`
+          })
+
+          setItems([...formatted, ...formatted, ...formatted])
+          setStatus('live')
+          console.log(`[NewsTicker] ✅ Fetched ${formatted.length} live articles`)
+        }
+
       } catch (err) {
         if (!cancelled) {
           console.warn('[NewsTicker] Live feed unavailable, using static fallback:', err.message)
@@ -110,14 +182,23 @@ export default function NewsTicker() {
     }
 
     fetchNews()
-    return () => { cancelled = true }
+
+    // Refresh every 5 minutes
+    const interval = setInterval(() => {
+      if (!cancelled) fetchNews()
+    }, 5 * 60 * 1000)
+
+    return () => {
+      cancelled = true
+      clearInterval(interval)
+    }
   }, [])
 
   // Badge appearance
   const badgeLabel = status === 'live' ? 'Live' : status === 'cached' ? 'Cached' : 'Live'
   const badgeColor = status === 'cached' ? '#facc15' : '#4ade80'
 
-  // Scale duration so ticker speed stays constant regardless of item count
+  // Scale duration so ticker speed stays constant
   const durationS = Math.max(40, items.length * 2.4)
 
   return (
@@ -179,12 +260,12 @@ export default function NewsTicker() {
         </div>
       </div>
 
-      {/* ── Source attribution (only when live) ────────────────────────── */}
+      {/* ── Source attribution ────────────────────────────────────────── */}
       {status === 'live' && (
         <div className="shrink-0 px-3 border-l border-white/8 h-full flex items-center gap-1.5">
           <span className="h-1.5 w-1.5 rounded-full bg-emerald-400/70" />
           <span className="text-[9px] uppercase tracking-widest text-slate-500">
-            The Guardian
+            Climate News
           </span>
         </div>
       )}
