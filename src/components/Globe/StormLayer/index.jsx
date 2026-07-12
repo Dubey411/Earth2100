@@ -10,7 +10,7 @@
  *
  * Click any storm element → compact HUD panel with storm name + science info.
  */
-import { useEffect, useRef, useCallback, useState } from 'react'
+import React, { useEffect, useRef, useCallback, useState } from 'react'
 import * as THREE from 'three'
 import { STORM_BASINS, catToColor, catToLabel } from './constants'
 import CycloneVortex  from './CycloneVortex'
@@ -95,7 +95,7 @@ export default function StormLayer({ globe, scene }) {
     <>
       {/* Mount all storm sub-components */}
       {STORM_BASINS.map((storm) => (
-        <group key={storm.id}>
+        <React.Fragment key={storm.id}>
           <RainBands
             scene={scene}
             storm={storm}
@@ -116,7 +116,7 @@ export default function StormLayer({ globe, scene }) {
             storm={storm}
             registerAnimated={registerAnimated}
           />
-        </group>
+        </React.Fragment>
       ))}
 
       {/* ── Storm Activity Status Badge ─────────────────────────────────── */}
