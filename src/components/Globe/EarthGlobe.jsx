@@ -34,6 +34,7 @@ import IceCaps          from './TimelineLayers/IceCaps.jsx'
 import SeaRise          from './TimelineLayers/SeaRise.jsx'
 import ForestLoss       from './TimelineLayers/ForestLoss.jsx'
 import DroughtOverlay   from './TimelineLayers/DroughtOverlay.jsx'
+import IceMeltingDetails from './TimelineLayers/IceMeltingDetails.jsx'
 
 const INITIAL_SIZE = { w: window.innerWidth, h: window.innerHeight }
 
@@ -421,6 +422,10 @@ export default function EarthGlobe() {
             snapshot={snapshot}
           />
           <DroughtOverlay
+            scene={globeInstance.scene()}
+            snapshot={snapshot}
+          />
+          <IceMeltingDetails
             scene={globeInstance.scene()}
             snapshot={snapshot}
           />
