@@ -12,7 +12,7 @@
  */
 import React, { useEffect, useRef, useCallback, useState } from 'react'
 import * as THREE from 'three'
-import { STORM_BASINS, catToColor, catToLabel } from './constants'
+import { STORM_BASINS, catToColor, catToLabel, fetchLiveStorms } from './constants'
 import CycloneVortex  from './CycloneVortex'
 import EyeWall        from './EyeWall'
 import LightningBolts from './LightningBolts'
@@ -21,10 +21,25 @@ import RainBands      from './RainBands'
 export default function StormLayer({ globe, scene, snapshot }) {
   const animatedRef = useRef([])
   const [selectedInfo, setSelectedInfo] = useState(null)
+  const [storms, setStorms] = useState(STORM_BASINS)
+  const [isLive, setIsLive] = useState(false)
+  const [loading, setLoading] = useState(true)
 
   const registerAnimated = useCallback((fn) => {
     animatedRef.current.push(fn)
     return () => { animatedRef.current = animatedRef.current.filter(f => f !== fn) }
+  }, [])
+
+  // ── Fetch Live Storms ──────────────────────────────────────────────────────
+  useEffect(() => {
+    setLoading(true)
+    fetchLiveStorms().then((live) => {
+      if (live && live.length > 0) {
+        setStorms(live)
+        setIsLive(true)
+      }
+      setLoading(false)
+    })
   }, [])
 
   // ── Global RAF animation loop ──────────────────────────────────────────────
@@ -70,7 +85,7 @@ export default function StormLayer({ globe, scene, snapshot }) {
       const hits = raycaster.intersectObjects(targets)
       if (hits.length > 0) {
         const { name, desc, stormId } = hits[0].object.userData
-        const storm = STORM_BASINS.find(s => s.id === stormId)
+        const storm = storms.find(s => s.id === stormId)
         setSelectedInfo({ name, desc, storm })
       } else {
         setSelectedInfo(null)
@@ -79,7 +94,7 @@ export default function StormLayer({ globe, scene, snapshot }) {
 
     canvas.addEventListener('click', onClick)
     return () => canvas.removeEventListener('click', onClick)
-  }, [globe, scene])
+  }, [globe, scene, storms])
 
   // ── Track screen position of active selected storm for HUD placement ────────
   const [hudPos, setHudPos] = useState({ x: '50%', y: '75px' })
@@ -94,7 +109,7 @@ export default function StormLayer({ globe, scene, snapshot }) {
   return (
     <>
       {/* Mount all storm sub-components */}
-      {STORM_BASINS.map((storm) => (
+      {storms.map((storm) => (
         <React.Fragment key={storm.id}>
           <RainBands
             scene={scene}
@@ -105,6 +120,7 @@ export default function StormLayer({ globe, scene, snapshot }) {
             scene={scene}
             storm={storm}
             registerAnimated={registerAnimated}
+            stormScale={snapshot?.stormScale ?? 1.0}
           />
           <EyeWall
             scene={scene}
@@ -129,8 +145,8 @@ export default function StormLayer({ globe, scene, snapshot }) {
         alignItems: 'center',
         gap: '8px',
         background: 'rgba(10, 6, 28, 0.90)',
-        border: '1px solid rgba(204, 102, 255, 0.40)',
-        boxShadow: '0 0 20px rgba(204,102,255,0.15), inset 0 0 10px rgba(204,102,255,0.06)',
+        border: `1px solid ${isLive ? 'rgba(0, 229, 255, 0.40)' : 'rgba(204, 102, 255, 0.40)'}`,
+        boxShadow: `0 0 20px ${isLive ? 'rgba(0, 229, 255, 0.15)' : 'rgba(204, 102, 255, 0.15)'}, inset 0 0 10px rgba(204, 102, 255, 0.06)`,
         borderRadius: '20px',
         padding: '6px 14px',
         zIndex: 9990,
@@ -141,21 +157,21 @@ export default function StormLayer({ globe, scene, snapshot }) {
       }}>
         <div style={{
           width: '7px', height: '7px', borderRadius: '50%',
-          background: '#cc66ff',
-          boxShadow: '0 0 8px #cc66ff',
+          background: isLive ? '#00e5ff' : '#cc66ff',
+          boxShadow: `0 0 8px ${isLive ? '#00e5ff' : '#cc66ff'}`,
           animation: 'stormPulse 1.4s ease-in-out infinite',
           flexShrink: 0,
         }} />
         <div>
           <div style={{ fontSize: '7px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '1.2px', color: '#64748b' }}>
-            GLOBAL STORM TRACKER
+            {isLive ? 'GDACS · LIVE FEED' : 'STATIC FALLBACK BASINS'}
           </div>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px' }}>
-            <span style={{ fontSize: '12px', fontWeight: 700, color: '#cc66ff' }}>
-              {STORM_BASINS.length} Active Cyclones
+            <span style={{ fontSize: '12px', fontWeight: 700, color: isLive ? '#00e5ff' : '#cc66ff' }}>
+              {loading ? 'Locating storm centres…' : `${storms.length} Active Cyclones`}
             </span>
             <span style={{ fontSize: '9px', color: '#94a3b8' }}>
-              · Click a storm to inspect
+              · Click to inspect storm details
             </span>
           </div>
         </div>
