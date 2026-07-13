@@ -89,16 +89,16 @@ const FRAG = /* glsl */`
   }
 `
 
-export default function SmogDome({ globe, scene, hotspot, liveAqi, registerAnimated }) {
+export default function SmogDome({ globe, scene, hotspot, liveAqi, registerAnimated, timelineScale = 1.0 }) {
   useEffect(() => {
     if (!globe) return
 
-    const aqi = liveAqi?.aqi ?? hotspot.baseAqi
-    const cat = getAqiCategory(aqi)
-    const color = new THREE.Color(cat.color)
+    const aqi       = (liveAqi?.aqi ?? hotspot.baseAqi) * Math.min(timelineScale, 3.0)
+    const cat       = getAqiCategory(Math.min(aqi, 500))
+    const color     = new THREE.Color(cat.color)
 
-    // Scaling size proportional to severity (doubled degrees multiplier from 7.5 to 14.5)
-    const scaleFactor = 0.55 + Math.min(aqi / 300, 0.70)
+    // Scaling size proportional to severity, also boosted by timeline scenario
+    const scaleFactor = (0.55 + Math.min(aqi / 300, 0.70)) * Math.min(timelineScale, 3.0)
     const sizeRad = scaleFactor * 14.5 * Math.PI / 180 * GLOBE_R
 
     const mat = new THREE.ShaderMaterial({
@@ -157,7 +157,7 @@ export default function SmogDome({ globe, scene, hotspot, liveAqi, registerAnima
       }
       fade()
     }
-  }, [scene, hotspot, liveAqi]) // eslint-disable-line
+  }, [scene, hotspot, liveAqi, timelineScale]) // eslint-disable-line
 
   return null
 }

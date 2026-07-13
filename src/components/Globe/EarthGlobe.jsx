@@ -3,6 +3,7 @@ import Globe from 'react-globe.gl'
 import * as THREE from 'three'
 import { HOTSPOTS } from '../../data/hotspots.js'
 import useClimateStore from '../../store/useClimateStore.js'
+import useTimelineState from '../../store/useTimelineState.js'
 import {
   EARTH_BUMP,
   EARTH_DAY,
@@ -24,11 +25,15 @@ import { addCloudLayer,
   updateHeatLayer,
 } from './sceneLayers.js'
 import worldCountries from '../../../geojson/world.geo.json/countries.geo.json'
-import FloodLayer from './FloodLayer/index.jsx'
-import ElNinoLayer from './ElNinoLayer/index.jsx'
-import StormLayer from './StormLayer/index.jsx'
+import FloodLayer       from './FloodLayer/index.jsx'
+import ElNinoLayer      from './ElNinoLayer/index.jsx'
+import StormLayer       from './StormLayer/index.jsx'
 import AirPollutionLayer from './AirPollutionLayer/index.jsx'
-import SolarStormLayer from './SolarStormLayer/index.jsx'
+import SolarStormLayer  from './SolarStormLayer/index.jsx'
+import IceCaps          from './TimelineLayers/IceCaps.jsx'
+import SeaRise          from './TimelineLayers/SeaRise.jsx'
+import ForestLoss       from './TimelineLayers/ForestLoss.jsx'
+import DroughtOverlay   from './TimelineLayers/DroughtOverlay.jsx'
 
 const INITIAL_SIZE = { w: window.innerWidth, h: window.innerHeight }
 
@@ -55,6 +60,22 @@ export default function EarthGlobe() {
   const setActiveRegion = useClimateStore((s) => s.setActiveRegion)
   const clearFlyTarget  = useClimateStore((s) => s.clearFlyTarget)
   const flyTo           = useClimateStore((s) => s.flyTo)
+
+  // ── Timeline snapshot (re-computed on slider/scenario change) ───────────────
+  const snapshot    = useTimelineState()
+  const snapshotRef = useRef(snapshot)   // always holds latest snapshot for RAF/subscriber closures
+  useEffect(() => { snapshotRef.current = snapshot }, [snapshot])
+
+  // ── Atmosphere color — updates lazily (every ~0.1°C step) to avoid thrash ──
+  const [atmosphereColor, setAtmosphereColor] = useState('#38d8ff')
+  const lastTempBucketRef = useRef(-1)
+  useEffect(() => {
+    const bucket = Math.round(snapshot.tempC * 10)  // 0.1°C resolution
+    if (bucket !== lastTempBucketRef.current) {
+      lastTempBucketRef.current = bucket
+      setAtmosphereColor(snapshot.atmosphereColor)
+    }
+  }, [snapshot.tempC, snapshot.atmosphereColor])
 
   // ── Land mask texture (rasterised from GeoJSON, white=land black=ocean) ──────
   const maskTexture = useMemo(() => {
@@ -167,13 +188,18 @@ export default function EarthGlobe() {
     heatMeshRef.current = heatMesh
     disposersRef.current.push(heatLayer.dispose)
 
-    // Sync helper - controls visibility from store
+    // Sync helper — blends signal heat + timeline heat intensity
     const syncHeat = (state) => {
-      const active    = state.activeSignals.has('heat')
-      const intensity = state.signalIntensity.heat ?? 1.0
-      heatMesh.visible = active
-      heatMesh.material.uniforms.uIntensity.value = active ? intensity : 0.0
-      console.log('🔥 Heat layer visibility synced:', active, 'intensity:', intensity)
+      const active          = state.activeSignals.has('heat')
+      const sigIntensity    = state.signalIntensity.heat ?? 1.0
+      const timelineIntens  = state.drawerOpen
+        ? (snapshotRef.current?.heatIntensity ?? 0)
+        : 0
+      const blended = active
+        ? Math.min(1, sigIntensity + timelineIntens * 0.4)
+        : timelineIntens * 0.6
+      heatMesh.visible = active || (state.drawerOpen && timelineIntens > 0.05)
+      heatMesh.material.uniforms.uIntensity.value = blended
     }
 
     // Apply current state immediately, then subscribe to future changes
@@ -314,7 +340,7 @@ export default function EarthGlobe() {
         globeImageUrl={EARTH_DAY}
         bumpImageUrl={EARTH_BUMP}
         showAtmosphere={true}
-        atmosphereColor="#38d8ff"
+        atmosphereColor={atmosphereColor}
         atmosphereAltitude={0.18}
         backgroundImageUrl={NIGHT_SKY}
         htmlElementsData={allHtmlData}
@@ -347,6 +373,7 @@ export default function EarthGlobe() {
           globe={globeInstance}
           scene={globeInstance.scene()}
           maskTexture={maskTexture}
+          snapshot={snapshot}
         />
       )}
       {globeInstance && activeSignals.has('enso') && (
@@ -360,12 +387,14 @@ export default function EarthGlobe() {
         <StormLayer
           globe={globeInstance}
           scene={globeInstance.scene()}
+          snapshot={snapshot}
         />
       )}
       {globeInstance && activeSignals.has('air') && (
         <AirPollutionLayer
           globe={globeInstance}
           scene={globeInstance.scene()}
+          snapshot={snapshot}
         />
       )}
       {globeInstance && activeSignals.has('solar') && (
@@ -374,6 +403,30 @@ export default function EarthGlobe() {
           scene={globeInstance.scene()}
         />
       )}
+
+      {/* ── Timeline Layers (always-on when drawer is open) ──────────────── */}
+      {globeInstance && snapshot.active && (
+        <>
+          <IceCaps
+            scene={globeInstance.scene()}
+            snapshot={snapshot}
+          />
+          <SeaRise
+            scene={globeInstance.scene()}
+            snapshot={snapshot}
+            landMask={maskTexture}
+          />
+          <ForestLoss
+            scene={globeInstance.scene()}
+            snapshot={snapshot}
+          />
+          <DroughtOverlay
+            scene={globeInstance.scene()}
+            snapshot={snapshot}
+          />
+        </>
+      )}
+
       <style>{SIGNAL_ANIMATION_STYLES}</style>
     </div>
   )

@@ -17,7 +17,7 @@ import { POLLUTION_HOTSPOTS, fetchLiveAqi, getAqiCategory } from './constants'
 import SmogDome  from './SmogDome'
 import SootDrift from './SootDrift'
 
-export default function AirPollutionLayer({ globe, scene }) {
+export default function AirPollutionLayer({ globe, scene, snapshot }) {
   const animatedRef = useRef([])
   const [selectedInfo, setSelectedInfo] = useState(null)
   
@@ -127,6 +127,7 @@ export default function AirPollutionLayer({ globe, scene }) {
               hotspot={hotspot}
               liveAqi={liveAqi}
               registerAnimated={registerAnimated}
+              timelineScale={snapshot?.smogScale ?? 1.0}
             />
             <SootDrift
               globe={globe}
@@ -168,11 +169,11 @@ export default function AirPollutionLayer({ globe, scene }) {
         }} />
         <div>
           <div style={{ fontSize: '7px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '1.2px', color: '#64748b' }}>
-            CPCB · Open-Meteo · LIVE
+            WAQI · CPCB · LIVE
           </div>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px' }}>
             <span style={{ fontSize: '12px', fontWeight: 700, color: '#b08eee' }}>
-              {loading ? 'Connecting to CPCB…' : 'AQI Plumes Active'}
+              {loading ? 'Connecting to WAQI…' : 'AQI Plumes Active'}
             </span>
             <span style={{ fontSize: '9px', color: '#94a3b8' }}>
               · Real-time PM2.5 stations

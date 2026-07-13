@@ -18,7 +18,7 @@ import EyeWall        from './EyeWall'
 import LightningBolts from './LightningBolts'
 import RainBands      from './RainBands'
 
-export default function StormLayer({ globe, scene }) {
+export default function StormLayer({ globe, scene, snapshot }) {
   const animatedRef = useRef([])
   const [selectedInfo, setSelectedInfo] = useState(null)
 

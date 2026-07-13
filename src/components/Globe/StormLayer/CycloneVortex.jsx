@@ -103,7 +103,7 @@ const FRAG = /* glsl */`
   }
 `
 
-export default function CycloneVortex({ scene, storm, globalTime, registerAnimated }) {
+export default function CycloneVortex({ scene, storm, globalTime, registerAnimated, stormScale = 1.0 }) {
   const pointsRef = useRef(null)
 
   useEffect(() => {
@@ -165,7 +165,7 @@ export default function CycloneVortex({ scene, storm, globalTime, registerAnimat
     const startMs = performance.now()
     const unregister = registerAnimated((t) => {
       const elapsed = (performance.now() - startMs) / FADE_MS
-      mat.uniforms.uOpacity.value = Math.min(elapsed, 1.0) * storm.intensity
+      mat.uniforms.uOpacity.value = Math.min(elapsed, 1.0) * storm.intensity * Math.min(stormScale, 2.0)
       mat.uniforms.uTime.value    = t
     })
 
@@ -178,7 +178,7 @@ export default function CycloneVortex({ scene, storm, globalTime, registerAnimat
       }
       fade()
     }
-  }, [scene, storm]) // eslint-disable-line
+  }, [scene, storm, stormScale]) // eslint-disable-line
 
   return null
 }
