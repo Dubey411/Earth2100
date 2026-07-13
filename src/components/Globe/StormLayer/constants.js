@@ -60,3 +60,60 @@ export function catToLabel(cat) {
   }
   return map[cat] ?? 'Tropical Storm'
 }
+
+/**
+ * 🌀 Live Feed: Fetches active tropical cyclones from GDACS live API feed.
+ * Returns custom storm objects for the storm layer.
+ */
+export async function fetchLiveStorms() {
+  try {
+    const res = await fetch('https://www.gdacs.org/gdacsapi/api/Events/geteventlist/EVENTS4APP')
+    if (!res.ok) throw new Error(`HTTP ${res.status}`)
+    const json = await res.json()
+    const features = json.features ?? []
+
+    const cyclones = features
+      .filter(f => f.properties?.eventtype === 'TC')
+      .map((f) => {
+        const props  = f.properties ?? {}
+        const coords = f.geometry?.coordinates ?? [0, 0]
+        const desc   = props.htmldescription ?? props.description ?? ''
+
+        // Parse category from description
+        let cat = 1
+        if (desc.includes('Category 5') || desc.includes('Cat 5') || desc.toLowerCase().includes('super')) cat = 5
+        else if (desc.includes('Category 4') || desc.includes('Cat 4')) cat = 4
+        else if (desc.includes('Category 3') || desc.includes('Cat 3')) cat = 3
+        else if (desc.includes('Category 2') || desc.includes('Cat 2')) cat = 2
+        else if (desc.includes('Category 1') || desc.includes('Cat 1')) cat = 1
+        else {
+          const sev = props.severitydata?.severity ?? 0
+          if (sev >= 252) cat = 5
+          else if (sev >= 209) cat = 4
+          else if (sev >= 178) cat = 3
+          else if (sev >= 154) cat = 2
+          else cat = 1
+        }
+
+        return {
+          id: `gdacs-tc-${props.eventid}`,
+          lat: coords[1],
+          lng: coords[0],
+          name: props.eventname || props.name || 'Active Cyclone',
+          cat,
+          radius: 5.5 + cat * 0.8,
+          intensity: 0.6 + cat * 0.08,
+          isLive: true,
+          desc: props.htmldescription ?? props.description ?? 'Active tropical cyclone tracked by GDACS.'
+        }
+      })
+
+    if (cyclones.length > 0) {
+      console.info(`[StormLayer/GDACS] Successfully loaded ${cyclones.length} active tropical cyclones!`)
+      return cyclones
+    }
+  } catch (err) {
+    console.warn('[StormLayer/GDACS] Live active storms feed unavailable, falling back:', err.message)
+  }
+  return null
+}
