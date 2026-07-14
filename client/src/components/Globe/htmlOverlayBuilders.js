@@ -109,18 +109,6 @@ export function buildLocationPin(h, { setActiveRegion, flyTo }) {
   const wrap = document.createElement('div')
   wrap.style.cssText = 'position:relative;width:40px;height:40px;cursor:pointer'
 
-  for (let i = 0; i < 2; i++) {
-    const ring = document.createElement('div')
-    ring.style.cssText = `
-      position:absolute;left:50%;top:50%;
-      width:${i === 0 ? 18 : 32}px;height:${i === 0 ? 18 : 32}px;
-      border-radius:50%;border:1.5px solid ${h.color};
-      transform:translate(-50%,-50%) scale(0.6);
-      animation:pulseRingHotspot 2.4s ease-out infinite ${i * 0.75}s;
-    `
-    wrap.appendChild(ring)
-  }
-
   const dot = document.createElement('div')
   dot.style.cssText = `
     position:absolute;left:50%;top:50%;width:9px;height:9px;
