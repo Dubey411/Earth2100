@@ -315,10 +315,7 @@ export default function EarthGlobe() {
   // Hide location pins when any climate signal is active to keep the view focused on the animations
   const hasActiveSignal = activeSignals.size > 0
 
-  const allHtmlData = useMemo(() => [
-    ...(!hasActiveSignal ? HOTSPOTS.map((h) => ({ ...h, _type: 'location' })) : []),
-    ...signalHtmlData.map((h) => ({ ...h, _type: 'signal' })),
-  ], [signalHtmlData, hasActiveSignal])
+  const allHtmlData = useMemo(() => [], [])
 
   const buildSignalEl = useCallback(
     (d) => buildSignalHotspot(d, d._sigId, d._intensity ?? 1.0),
