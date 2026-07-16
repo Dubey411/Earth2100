@@ -41,6 +41,9 @@ ehthumbs.db
 .env.test.local
 .env.production.local
 
+# Firebase service account key (NEVER commit this)
+serviceAccountKey.json
+
 # Agent/Gemini local session artifacts
 .agents/
 .gemini/

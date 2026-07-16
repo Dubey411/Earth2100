@@ -1,5 +1,7 @@
 import express from 'express';
 import cors from 'cors';
+import hotspotRoutes from './routes/hotspot.routes.js';
+import userRoutes from './routes/user.routes.js';
 
 const app = express();
 
@@ -16,10 +18,9 @@ app.get('/', (req, res) => {
   });
 });
 
-// Placeholder for routes (User to implement)
-// app.use('/api/hotspots', hotspotRoutes);
-// app.use('/api/live', liveDataRoutes);
-// app.use('/api/news', newsRoutes);
+// Routes
+app.use('/api/hotspots', hotspotRoutes);
+app.use('/api/users', userRoutes);
 
 // 404 Route handler
 app.use((req, res) => {

@@ -1,10 +1,11 @@
-const express = require("express");
+import express from "express";
+import { getHotspots, getHotspotById, getHotspotByArea } from "../controllers/hotspot.controller.js";
+
 const router = express.Router();
-const { getHotspots, getHotspotById, getHotspotByArea } = require("../controller/hotspot.controller");
 
-router.get("/api/hotspots", getHotspots);
-router.get("/api/hotspots/:id",getHotspotById);
-router.get("/api/hotspots/area", getHotspotByArea);
+// NOTE: /area must be before /:id to avoid "area" being matched as an ID param
+router.get("/area", getHotspotByArea);   // GET /api/hotspots/area?area=Asia
+router.get("/:id", getHotspotById);      // GET /api/hotspots/:id
+router.get("/", getHotspots);            // GET /api/hotspots
 
-module.exports = router;
-
+export default router;

@@ -1,48 +1,53 @@
-const mongoose = require("mongoose");
+import { db } from "../config/firebase.js";
 
-const hotspotSchema = new mongoose.Schema(
-    {
-        name: {
-            type: String,
-            required: true,
-            trim: true,
-        },
-        area: {
-            type: String,
-            required: true,
-            trim: true, // e.g., "Asia", "Africa", "South America"
-        },
-        location: {
-            lat: { type: Number, required: true },
-            lng: { type: Number, required: true },
-        },
-        severity: {
-            type: String,
-            enum: ["low", "medium", "high", "critical"],
-            default: "medium",
-        },
-        description: {
-            type: String,
-            trim: true,
-        },
-        affectedSpecies: {
-            type: [String],
-            default: [],
-        },
-        temperature: {
-            type: Number, // in °C
-        },
-        year: {
-            type: Number, // year of observation / projection
-        },
-        isActive: {
-            type: Boolean,
-            default: true,
-        },
-    },
-    { timestamps: true }
-);
+// Firestore collection reference
+const hotspotCollection = db.collection("hotspots");
 
-const Hotspot = mongoose.model("Hotspot", hotspotSchema);
+const Hotspot = {
+  // Get all hotspots
+  find: async (filters = {}) => {
+    let query = hotspotCollection;
 
-module.exports = Hotspot;
+    // Apply filters (e.g., { area: "Asia" })
+    for (const [key, value] of Object.entries(filters)) {
+      query = query.where(key, "==", value);
+    }
+
+    const snapshot = await query.get();
+    return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+  },
+
+  // Get hotspot by Firestore document ID
+  findById: async (id) => {
+    const doc = await hotspotCollection.doc(id).get();
+    if (!doc.exists) return null;
+    return { id: doc.id, ...doc.data() };
+  },
+
+  // Create a new hotspot
+  create: async (data) => {
+    const docRef = await hotspotCollection.add({
+      ...data,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    });
+    return { id: docRef.id, ...data };
+  },
+
+  // Update a hotspot by ID
+  update: async (id, data) => {
+    await hotspotCollection.doc(id).update({
+      ...data,
+      updatedAt: new Date().toISOString(),
+    });
+    return { id, ...data };
+  },
+
+  // Delete a hotspot by ID
+  delete: async (id) => {
+    await hotspotCollection.doc(id).delete();
+    return { id };
+  },
+};
+
+export default Hotspot;
