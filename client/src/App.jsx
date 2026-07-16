@@ -1,10 +1,21 @@
+import { useEffect } from 'react'
 import Topbar          from './components/Topbar/Topbar.jsx'
 import GlobeContainer  from './components/Globe/GlobeContainer.jsx'
 import ClimateSignals  from './components/Signals/ClimateSignals.jsx'
 import PlanetaryFutures from './components/Futures/PlanetaryFutures.jsx'
 import NewsTicker      from './components/Ticker/NewsTicker.jsx'
+import useAuthStore    from './store/useAuthStore.js'
 
 export default function App() {
+  const initAuth = useAuthStore((state) => state.initAuth);
+
+  useEffect(() => {
+    const unsubscribe = initAuth();
+    return () => {
+      if (typeof unsubscribe === "function") unsubscribe();
+    };
+  }, [initAuth]);
+
   return (
     <div
       className="relative w-full h-screen overflow-hidden select-none"
