@@ -1,19 +1,32 @@
-const express = require('express');
-const router = expresss.Router()
-const NotificationController = require('../controller/notification.controller')
-const {authenticate} = require('../middleware/auth.middleware')
+import express from "express";
+import NotificationController from "../controllers/notification.controller.js";
+import { verifyToken } from "../middleware/auth.middleware.js";
 
-// ─── Unprotected routes ─────────────────────────────────────────────────────
-router.get('/user/:userId',NotificationController.getUserNotifications)
-router.get('/unread/:userId',NotificationController.getUnreadCount)
+const router = express.Router();
 
-// ─── Protected routes (requires authentication) ─────────────────────────────
-router.post('/create',authenticate,NotificationController.createNotifications)
-router.put('/:id/read',authenticate,NotificationController.markAsRead)
-router.put('/read-all',authenticate,NotificationController.markAllAsRead)
-router.delete('/:id',authenticate,NotificationController.deleteNotification)
+// ─── Protected routes (require authentication) ──────────────────────────────
 
-// ─── Optional: System notification (no auth, internal use) ──────────────────
-router.post('/system',NotificationController.createNotification)
+// Get all notifications for authenticated user
+router.get("/user", verifyToken, NotificationController.getUserNotifications);
 
-module.export = router
+// Get unread count
+router.get("/unread", verifyToken, NotificationController.getUnreadCount);
+
+// Mark as read
+router.put("/:id/read", verifyToken, NotificationController.markAsRead);
+
+// Mark all as read
+router.put("/read-all", verifyToken, NotificationController.markAllAsRead);
+
+// Delete notification
+router.delete("/:id", verifyToken, NotificationController.deleteNotification);
+
+// ─── System routes (internal use) ────────────────────────────────────────────
+
+// Create notification (admin/system)
+router.post("/create", NotificationController.createNotification);
+
+// Create flood alert
+router.post("/flood-alert", NotificationController.createFloodAlert);
+
+export default router;

@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import hotspotRoutes from './routes/hotspot.routes.js';
 import userRoutes from './routes/user.routes.js';
+import notificationRoutes from './routes/notification.routes.js';
 
 const app = express();
 
@@ -21,6 +22,7 @@ app.get('/', (req, res) => {
 // Routes
 app.use('/api/hotspots', hotspotRoutes);
 app.use('/api/users', userRoutes);
+app.use('/api/notifications', notificationRoutes)
 
 // 404 Route handler
 app.use((req, res) => {
