@@ -54,14 +54,16 @@ export default function EarthGlobe() {
   const [isDragging,    setIsDragging]    = useState(false)
   const [globeInstance, setGlobeInstance] = useState(null)
 
-  const autoRotate      = useClimateStore((s) => s.autoRotate)
-  const flyTarget       = useClimateStore((s) => s.flyTarget)
-  const handToolActive  = useClimateStore((s) => s.handToolActive)
-  const activeSignals   = useClimateStore((s) => s.activeSignals)
-  const signalIntensity = useClimateStore((s) => s.signalIntensity)
-  const setActiveRegion = useClimateStore((s) => s.setActiveRegion)
-  const clearFlyTarget  = useClimateStore((s) => s.clearFlyTarget)
-  const flyTo           = useClimateStore((s) => s.flyTo)
+  const autoRotate       = useClimateStore((s) => s.autoRotate)
+  const flyTarget        = useClimateStore((s) => s.flyTarget)
+  const handToolActive   = useClimateStore((s) => s.handToolActive)
+  const activeSignals    = useClimateStore((s) => s.activeSignals)
+  const signalIntensity  = useClimateStore((s) => s.signalIntensity)
+  const setActiveRegion  = useClimateStore((s) => s.setActiveRegion)
+  const clearFlyTarget   = useClimateStore((s) => s.clearFlyTarget)
+  const flyTo            = useClimateStore((s) => s.flyTo)
+  const layersVisibility = useClimateStore((s) => s.layersVisibility)
+  const earthCoreActive  = !!layersVisibility?.earthCore
 
   // ── Timeline snapshot (re-computed on slider/scenario change) ───────────────
   const snapshot    = useTimelineState()
@@ -192,23 +194,23 @@ export default function EarthGlobe() {
 
     // Sync helper — blends signal heat + timeline heat intensity
     const syncHeat = (state) => {
-      const active          = state.activeSignals.has('heat')
-      const sigIntensity    = state.signalIntensity.heat ?? 1.0
-      const timelineIntens  = state.drawerOpen
+      const active         = state.activeSignals.has('heat')
+      const sigIntensity   = state.signalIntensity.heat ?? 1.0
+      const timelineIntens = state.drawerOpen
         ? (snapshotRef.current?.heatIntensity ?? 0)
         : 0
       const blended = active
         ? Math.min(1, sigIntensity + timelineIntens * 0.4)
         : timelineIntens * 0.6
-      
-      const heatmapVisible = state.layersVisibility?.heatmap !== false
-      heatMesh.visible = heatmapVisible && (active || (state.drawerOpen && timelineIntens > 0.05))
+
+      // Hide heat overlay completely when Earth Core cutaway is active
+      const earthCoreOn = !!state.layersVisibility?.earthCore
+      heatMesh.visible = !earthCoreOn && (active || (state.drawerOpen && timelineIntens > 0.05))
       heatMesh.material.uniforms.uIntensity.value = blended
 
-      // Toggle WMS NASA Satellite Layer
-      const satelliteEnabled = state.layersVisibility?.satelliteTemp !== false
+      // Always show NASA texture if loaded (no separate toggle anymore)
       const hasTexture = heatMesh.material.uniforms.uTempMap.value !== null
-      heatMesh.material.uniforms.uHasTempMap.value = (satelliteEnabled && hasTexture) ? 1.0 : 0.0
+      heatMesh.material.uniforms.uHasTempMap.value = hasTexture ? 1.0 : 0.0
     }
 
     // Apply current state immediately, then subscribe to future changes
@@ -343,9 +345,9 @@ export default function EarthGlobe() {
         width={size.w}
         height={size.h}
         backgroundColor="rgba(0,0,0,0)"
-        globeImageUrl={EARTH_DAY}
-        bumpImageUrl={EARTH_BUMP}
-        showAtmosphere={true}
+        globeImageUrl={earthCoreActive ? '' : EARTH_DAY}
+        bumpImageUrl={earthCoreActive ? '' : EARTH_BUMP}
+        showAtmosphere={!earthCoreActive}
         atmosphereColor={atmosphereColor}
         atmosphereAltitude={0.18}
         backgroundImageUrl={NIGHT_SKY}
@@ -408,6 +410,11 @@ export default function EarthGlobe() {
           globe={globeInstance}
           scene={globeInstance.scene()}
         />
+      )}
+
+      {/* ── Earth Core Cutaway Layer ─────────────────────────────────────── */}
+      {globeInstance && (
+        <EarthCoreLayer scene={globeInstance.scene()} />
       )}
 
       {/* ── Timeline Layers (always-on when drawer is open) ──────────────── */}
