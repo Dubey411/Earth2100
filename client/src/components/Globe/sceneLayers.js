@@ -1,6 +1,8 @@
 import * as THREE from 'three'
 import { CONTROL_SETTINGS, EARTH_NIGHT, TEMPERATURE_MAP } from './globeConstants.js'
 import { HEAT_FRAGMENT, HEAT_VERTEX } from './heatShader.js'
+import useClimateStore from '../../store/useClimateStore.js'
+
 
 // Cache geometries for reuse
 // react-globe.gl renders the Earth at radius ~100 Three.js units.
@@ -68,6 +70,7 @@ export function addNightLights(scene, loader) {
   let mesh = null
   let glowMesh = null
   let texture = null
+  let unsubscribe = null
   
   loader.load(EARTH_NIGHT, (tex) => {
     texture = tex
@@ -145,9 +148,20 @@ export function addNightLights(scene, loader) {
     glowMesh.frustumCulled = true
     glowMesh.rotation.y = -Math.PI / 2; // Align with prime meridian rotation in three-globe
     scene.add(glowMesh)
+
+    // Sync visibility with store
+    const syncVisibility = (state) => {
+      const { nightLights, atmosphere } = state.layersVisibility;
+      if (mesh) mesh.visible = !!nightLights;
+      if (glowMesh) glowMesh.visible = !!atmosphere;
+    };
+    
+    syncVisibility(useClimateStore.getState());
+    unsubscribe = useClimateStore.subscribe(syncVisibility);
   })
 
   return () => {
+    if (unsubscribe) unsubscribe();
     disposeMesh(scene, mesh)
     disposeMesh(scene, glowMesh)
     if (texture) texture.dispose()

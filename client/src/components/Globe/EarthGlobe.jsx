@@ -199,8 +199,15 @@ export default function EarthGlobe() {
       const blended = active
         ? Math.min(1, sigIntensity + timelineIntens * 0.4)
         : timelineIntens * 0.6
-      heatMesh.visible = active || (state.drawerOpen && timelineIntens > 0.05)
+      
+      const heatmapVisible = state.layersVisibility?.heatmap !== false
+      heatMesh.visible = heatmapVisible && (active || (state.drawerOpen && timelineIntens > 0.05))
       heatMesh.material.uniforms.uIntensity.value = blended
+
+      // Toggle WMS NASA Satellite Layer
+      const satelliteEnabled = state.layersVisibility?.satelliteTemp !== false
+      const hasTexture = heatMesh.material.uniforms.uTempMap.value !== null
+      heatMesh.material.uniforms.uHasTempMap.value = (satelliteEnabled && hasTexture) ? 1.0 : 0.0
     }
 
     // Apply current state immediately, then subscribe to future changes
