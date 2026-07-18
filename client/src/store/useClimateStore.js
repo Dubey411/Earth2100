@@ -27,8 +27,7 @@ const useClimateStore = create((set, get) => ({
   layersVisibility: {
     nightLights: true,
     atmosphere: true,
-    heatmap: true,
-    satelliteTemp: true,
+    earthCore: false,
   },
 
   // Actions
