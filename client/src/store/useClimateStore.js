@@ -23,6 +23,14 @@ const useClimateStore = create((set, get) => ({
   sliderYear: 2050,
   activeScenario: 'crisis',
 
+  // Globe Layers configuration
+  layersVisibility: {
+    nightLights: true,
+    atmosphere: true,
+    heatmap: true,
+    satelliteTemp: true,
+  },
+
   // Actions
   setActiveRegion: (key) => set({ activeRegion: key, sidebarOpen: true }),
   closeSidebar: () => set({ sidebarOpen: false, activeRegion: null }),
@@ -33,6 +41,13 @@ const useClimateStore = create((set, get) => ({
 
   flyTo: (lat, lng, altitude = 2.0) => set({ flyTarget: { lat, lng, altitude } }),
   clearFlyTarget: () => set({ flyTarget: null }),
+
+  toggleLayer: (layerId) => set((s) => ({
+    layersVisibility: {
+      ...s.layersVisibility,
+      [layerId]: !s.layersVisibility[layerId],
+    }
+  })),
 
   // ✅ FIXED: Properly toggle signals (add/remove)
   toggleSignal: (id) => set((s) => {
