@@ -23,12 +23,15 @@ const useClimateStore = create((set, get) => ({
   sliderYear: 2050,
   activeScenario: 'crisis',
 
-  // Globe Layers configuration
+  // Globe Layers toggles (independent on/off)
   layersVisibility: {
     nightLights: true,
     atmosphere: true,
-    earthCore: false,
   },
+
+  // Radio overlay — only ONE exclusive layer active at a time (null = none)
+  // Currently supports: 'earthCore'
+  activeLayer: null,
 
   // Actions
   setActiveRegion: (key) => set({ activeRegion: key, sidebarOpen: true }),
@@ -41,11 +44,17 @@ const useClimateStore = create((set, get) => ({
   flyTo: (lat, lng, altitude = 2.0) => set({ flyTarget: { lat, lng, altitude } }),
   clearFlyTarget: () => set({ flyTarget: null }),
 
+  // Toggle an independent layer on/off
   toggleLayer: (layerId) => set((s) => ({
     layersVisibility: {
       ...s.layersVisibility,
       [layerId]: !s.layersVisibility[layerId],
     }
+  })),
+
+  // Radio-style exclusive overlay toggle: clicking same ID deactivates it
+  setActiveLayer: (id) => set((s) => ({
+    activeLayer: s.activeLayer === id ? null : id,
   })),
 
   // ✅ FIXED: Properly toggle signals (add/remove)

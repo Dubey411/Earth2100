@@ -63,7 +63,8 @@ export default function EarthGlobe() {
   const clearFlyTarget   = useClimateStore((s) => s.clearFlyTarget)
   const flyTo            = useClimateStore((s) => s.flyTo)
   const layersVisibility = useClimateStore((s) => s.layersVisibility)
-  const earthCoreActive  = !!layersVisibility?.earthCore
+  const activeLayer      = useClimateStore((s) => s.activeLayer)
+  const earthCoreActive  = activeLayer === 'earthCore'
 
   // ── Timeline snapshot (re-computed on slider/scenario change) ───────────────
   const snapshot    = useTimelineState()
@@ -203,12 +204,9 @@ export default function EarthGlobe() {
         ? Math.min(1, sigIntensity + timelineIntens * 0.4)
         : timelineIntens * 0.6
 
-      // Hide heat overlay completely when Earth Core cutaway is active
-      const earthCoreOn = !!state.layersVisibility?.earthCore
-      heatMesh.visible = !earthCoreOn && (active || (state.drawerOpen && timelineIntens > 0.05))
+      heatMesh.visible = active || (state.drawerOpen && timelineIntens > 0.05)
       heatMesh.material.uniforms.uIntensity.value = blended
 
-      // Always show NASA texture if loaded (no separate toggle anymore)
       const hasTexture = heatMesh.material.uniforms.uTempMap.value !== null
       heatMesh.material.uniforms.uHasTempMap.value = hasTexture ? 1.0 : 0.0
     }
@@ -345,9 +343,9 @@ export default function EarthGlobe() {
         width={size.w}
         height={size.h}
         backgroundColor="rgba(0,0,0,0)"
-        globeImageUrl={earthCoreActive ? '' : EARTH_DAY}
-        bumpImageUrl={earthCoreActive ? '' : EARTH_BUMP}
-        showAtmosphere={!earthCoreActive}
+        globeImageUrl={EARTH_DAY}
+        bumpImageUrl={EARTH_BUMP}
+        showAtmosphere={true}
         atmosphereColor={atmosphereColor}
         atmosphereAltitude={0.18}
         backgroundImageUrl={NIGHT_SKY}

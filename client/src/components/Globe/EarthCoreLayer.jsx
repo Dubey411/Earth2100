@@ -5,8 +5,8 @@ import { EARTH_DAY } from "./globeConstants";
 
 export default function EarthCoreLayer({ scene }) {
   const groupRef = useRef(null);
-  const { layersVisibility } = useClimateStore();
-  const isActive = !!layersVisibility.earthCore;
+  const activeLayer = useClimateStore((s) => s.activeLayer);
+  const isActive = activeLayer === 'earthCore';
 
   useEffect(() => {
     if (!isActive || !scene) return;
