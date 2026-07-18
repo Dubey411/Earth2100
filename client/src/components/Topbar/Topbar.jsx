@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Globe2, Search, Moon, Layers, ChevronDown, LogOut, LogIn, User } from "lucide-react";
+import { Globe2, Search, Moon, ChevronDown, LogOut, LogIn, User } from "lucide-react";
 import useAuthStore from "../../store/useAuthStore";
 import AuthModal from "../Auth/AuthModal";
 import NotificationPanel from "../Notifications/NotificationPanel";
+import LayersPanel from "../Layers/LayersPanel";
 
 function UtcClock() {
   const [time, setTime] = useState("");
@@ -97,11 +98,7 @@ export default function Topbar() {
                   aria-label="Toggle theme">
             <Moon size={16} />
           </button>
-          <button className="w-9 h-9 grid place-items-center rounded-xl
-                             text-slate-400 hover:text-white hover:bg-white/8 transition-colors"
-                  aria-label="Layers">
-            <Layers size={16} />
-          </button>
+           <LayersPanel />
 
           {/* Profile Section (Conditional based on Auth state) */}
           {user ? (
