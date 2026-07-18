@@ -1,129 +1,433 @@
+// import { useEffect, useRef } from "react";
+// import * as THREE from "three";
+// import useClimateStore from "../../store/useClimateStore";
+// import { EARTH_DAY } from "./globeConstants";
+
+// export default function EarthCoreLayer({ globe, scene }) {
+//   const groupRef = useRef(null);
+//   const activeLayer = useClimateStore((s) => s.activeLayer);
+//   const isActive = activeLayer === 'earthCore';
+
+//   useEffect(() => {
+//     // ── Cleanup on deactivation ──────────────────────────────────────────
+//     if (!isActive) {
+//       if (groupRef.current && scene) {
+//         scene.remove(groupRef.current);
+//         groupRef.current = null;
+//         console.log('🌍 EarthCoreLayer: Removed cutaway');
+//       }
+//       return;
+//     }
+
+//     if (!scene) {
+//       console.warn('🌍 EarthCoreLayer: No scene provided');
+//       return;
+//     }
+
+//     console.log('🌍 EarthCoreLayer: Building cutaway...');
+
+//     // ── Remove existing group if any ────────────────────────────────────
+//     if (groupRef.current) {
+//       scene.remove(groupRef.current);
+//       groupRef.current = null;
+//     }
+
+//     const group = new THREE.Group();
+//     groupRef.current = group;
+//     scene.add(group);
+
+//     const loader = new THREE.TextureLoader();
+
+//     // ─── 1. LOAD EARTH TEXTURE ───────────────────────────────────────────
+//     const earthTex = loader.load(EARTH_DAY);
+//     earthTex.colorSpace = THREE.SRGBColorSpace;
+//     earthTex.wrapS = THREE.RepeatWrapping;
+//     earthTex.repeat.set(0.75, 1);
+
+//     // ─── 2. OUTER CRUST (3/4 sphere with Earth texture) ──────────────────
+//     const crustGeo = new THREE.SphereGeometry(100.8, 64, 64, 0, Math.PI * 1.5);
+//     const crustMat = new THREE.MeshStandardMaterial({
+//       map: earthTex,
+//       roughness: 0.7,
+//       metalness: 0.1,
+//       side: THREE.DoubleSide,
+//     });
+//     const crustMesh = new THREE.Mesh(crustGeo, crustMat);
+//     crustMesh.rotation.y = -Math.PI / 2;
+//     group.add(crustMesh);
+
+//     // ─── 3. MANTLE (semi-transparent red-orange) ──────────────────────────
+//     const mantleMat = new THREE.MeshStandardMaterial({
+//       color: 0xff4136,
+//       transparent: true,
+//       opacity: 0.5,
+//       roughness: 0.8,
+//       side: THREE.DoubleSide,
+//     });
+//     const mantle = new THREE.Mesh(
+//       new THREE.SphereGeometry(89, 48, 48, 0, Math.PI * 1.5),
+//       mantleMat
+//     );
+//     mantle.rotation.y = -Math.PI / 2;
+//     group.add(mantle);
+
+//     // ─── 4. OUTER CORE (liquid orange) ────────────────────────────────────
+//     const outerCoreMat = new THREE.MeshStandardMaterial({
+//       color: 0xff851b,
+//       emissive: 0xff5500,
+//       emissiveIntensity: 0.15,
+//       transparent: true,
+//       opacity: 0.85,
+//       roughness: 0.3,
+//       side: THREE.DoubleSide,
+//     });
+//     const outerCore = new THREE.Mesh(
+//       new THREE.SphereGeometry(55, 48, 48, 0, Math.PI * 1.5),
+//       outerCoreMat
+//     );
+//     outerCore.rotation.y = -Math.PI / 2;
+//     group.add(outerCore);
+
+//     // ─── 5. INNER CORE (solid yellow-white with glow) ──────────────────────
+//     const innerCoreMat = new THREE.MeshStandardMaterial({
+//       color: 0xfffec8,
+//       emissive: 0xffaa00,
+//       emissiveIntensity: 0.4,
+//       roughness: 0.2,
+//       metalness: 0.8,
+//       side: THREE.DoubleSide,
+//     });
+//     const innerCore = new THREE.Mesh(
+//       new THREE.SphereGeometry(28, 48, 48, 0, Math.PI * 1.5),
+//       innerCoreMat
+//     );
+//     innerCore.rotation.y = -Math.PI / 2;
+//     group.add(innerCore);
+
+//     // ─── 6. FLAT CUTAWAY FACE (concentric rings with labels) ──────────────
+//     const canvas = document.createElement("canvas");
+//     canvas.width = 2048;
+//     canvas.height = 2048;
+//     const ctx = canvas.getContext("2d");
+
+//     const cx = 1024, cy = 1024;
+//     const maxR = 1008; // 100.8 * 10
+
+//     // Background (dark space)
+//     ctx.fillStyle = "#0a0e1a";
+//     ctx.fillRect(0, 0, 2048, 2048);
+
+//     // Draw concentric rings
+//     const rings = [
+//       { radius: 280, color: "#fffec8", label: "Inner Core", sub: "~1,270 km radius • 5,400°C" },
+//       { radius: 550, color: "#ff851b", label: "Outer Core", sub: "~2,200 km thick • Liquid iron & nickel" },
+//       { radius: 890, color: "#ff4136", label: "Mantle", sub: "~2,900 km deep • Semi-solid hot rock" },
+//       { radius: 990, color: "#5c3a21", label: "Crust", sub: "0–35 km • Thin outer layer" },
+//     ];
+
+//     rings.forEach(({ radius, color }) => {
+//       ctx.beginPath();
+//       ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+//       ctx.fillStyle = color;
+//       ctx.fill();
+//       // Add a subtle border
+//       ctx.strokeStyle = "rgba(255,255,255,0.1)";
+//       ctx.lineWidth = 2;
+//       ctx.stroke();
+//     });
+
+//     // Add labels
+//     ctx.textAlign = "center";
+//     ctx.textBaseline = "middle";
+
+//     // Inner Core label (center)
+//     ctx.font = "bold 40px Inter, sans-serif";
+//     ctx.fillStyle = "rgba(255,255,255,0.95)";
+//     ctx.fillText("Inner Core", cx, cy - 60);
+//     ctx.font = "26px Inter, sans-serif";
+//     ctx.fillStyle = "rgba(255,255,255,0.6)";
+//     ctx.fillText("~1,270 km radius", cx, cy + 40);
+//     ctx.fillStyle = "rgba(255,200,100,0.8)";
+//     ctx.fillText("5,400°C", cx, cy + 90);
+
+//     // Outer Core label
+//     ctx.font = "bold 28px Inter, sans-serif";
+//     ctx.fillStyle = "rgba(255,255,255,0.7)";
+//     ctx.fillText("Outer Core", 760, 400);
+//     ctx.font = "18px Inter, sans-serif";
+//     ctx.fillStyle = "rgba(255,255,255,0.5)";
+//     ctx.fillText("Liquid iron & nickel", 760, 440);
+
+//     // Mantle label
+//     ctx.font = "bold 28px Inter, sans-serif";
+//     ctx.fillStyle = "rgba(255,255,255,0.6)";
+//     ctx.fillText("Mantle", 1120, 250);
+//     ctx.font = "18px Inter, sans-serif";
+//     ctx.fillStyle = "rgba(255,255,255,0.4)";
+//     ctx.fillText("Hot rock flowing", 1120, 290);
+
+//     // Crust label
+//     ctx.font = "bold 22px Inter, sans-serif";
+//     ctx.fillStyle = "rgba(255,255,255,0.5)";
+//     ctx.fillText("Crust", 1350, 150);
+
+//     const faceTexture = new THREE.CanvasTexture(canvas);
+//     faceTexture.colorSpace = THREE.SRGBColorSpace;
+
+//     const faceMat = new THREE.MeshBasicMaterial({
+//       map: faceTexture,
+//       side: THREE.DoubleSide,
+//       transparent: true,
+//     });
+
+//     // Two flat faces to cap the cut
+//     const faceGeo = new THREE.RingGeometry(0, 100.8, 64, 1, 0, Math.PI);
+    
+//     const face1 = new THREE.Mesh(faceGeo, faceMat);
+//     face1.rotation.x = -Math.PI / 2;
+//     face1.rotation.y = -Math.PI / 2;
+//     group.add(face1);
+
+//     const face2 = new THREE.Mesh(faceGeo.clone(), faceMat);
+//     face2.rotation.x = -Math.PI / 2;
+//     group.add(face2);
+
+//     // ─── 7. POSITION AND TILT ──────────────────────────────────────────────
+//     // Tilt so the cutaway faces the camera at a nice angle
+//     group.rotation.x = Math.PI / 12;
+//     group.rotation.y = Math.PI / 4;
+
+//     // ─── 8. ANIMATION ──────────────────────────────────────────────────────
+//     let reqId = null;
+//     const animate = () => {
+//       if (groupRef.current && isActive) {
+//         // Slow rotation
+//         groupRef.current.rotation.y += 0.0012;
+//         // Core pulse
+//         const pulse = 1 + 0.003 * Math.sin(performance.now() / 2000);
+//         innerCore.scale.set(pulse, pulse, pulse);
+//         innerCore.material.emissiveIntensity = 0.3 + 0.15 * Math.sin(performance.now() / 1500);
+//       }
+//       reqId = requestAnimationFrame(animate);
+//     };
+//     animate();
+
+//     // ─── 9. CLEANUP ──────────────────────────────────────────────────────────
+//     return () => {
+//       if (reqId) cancelAnimationFrame(reqId);
+//       if (groupRef.current && scene) {
+//         scene.remove(groupRef.current);
+//         groupRef.current = null;
+//       }
+//       // Dispose geometries and materials
+//       crustGeo.dispose();
+//       crustMat.dispose();
+//       earthTex.dispose();
+//       mantle.geometry.dispose();
+//       mantle.material.dispose();
+//       outerCore.geometry.dispose();
+//       outerCore.material.dispose();
+//       innerCore.geometry.dispose();
+//       innerCore.material.dispose();
+//       faceGeo.dispose();
+//       faceMat.dispose();
+//       faceTexture.dispose();
+//       console.log('🌍 EarthCoreLayer: Cleaned up');
+//     };
+//   }, [isActive, scene]);
+
+//   return null;
+// }
+
+
+
+
 import { useEffect, useRef } from "react";
 import * as THREE from "three";
 import useClimateStore from "../../store/useClimateStore";
 import { EARTH_DAY } from "./globeConstants";
 
-export default function EarthCoreLayer({ scene }) {
+export default function EarthCoreLayer({ globe, scene }) {
   const groupRef = useRef(null);
   const activeLayer = useClimateStore((s) => s.activeLayer);
   const isActive = activeLayer === 'earthCore';
 
   useEffect(() => {
-    if (!isActive || !scene) return;
+    if (!isActive) {
+      if (groupRef.current && scene) {
+        scene.remove(groupRef.current);
+        groupRef.current = null;
+      }
+      return;
+    }
 
-    // 1. Create a parent group to hold the cutaway model
+    if (!scene) {
+      console.warn('🌍 EarthCoreLayer: No scene provided');
+      return;
+    }
+
+    console.log('🌍 EarthCoreLayer: Building cutaway with visible core...');
+
+    if (groupRef.current) {
+      scene.remove(groupRef.current);
+      groupRef.current = null;
+    }
+
     const group = new THREE.Group();
     groupRef.current = group;
     scene.add(group);
 
     const loader = new THREE.TextureLoader();
 
-    // 2. Add 3/4 Sphere for Earth Surface (to make the cut look like a 90-degree slice missing)
-    // Using phiStart = 0, phiLength = Math.PI * 1.5 leaves a 90-degree quarter slice open.
-    const earthGeo = new THREE.SphereGeometry(99.6, 64, 64, 0, Math.PI * 1.5);
-    
-    // We must adjust the texture UV mapping so the Earth map maps correctly without stretching.
-    // By default, Three.js maps the whole texture horizontally.
-    // If we map the day texture, we repeat it so 1.0 repeat maps to full 2PI,
-    // which means for a 1.5PI length, we repeat 0.75 of the texture.
-    const earthTex = loader.load(EARTH_DAY, (tex) => {
-      tex.colorSpace = THREE.SRGBColorSpace;
-      tex.wrapS = THREE.RepeatWrapping;
-      tex.repeat.set(0.75, 1);
-    });
+    // ─── 1. LOAD EARTH TEXTURE ───────────────────────────────────────────
+    const earthTex = loader.load(EARTH_DAY);
+    earthTex.colorSpace = THREE.SRGBColorSpace;
+    earthTex.wrapS = THREE.RepeatWrapping;
+    earthTex.repeat.set(0.75, 1);
 
-    const earthMat = new THREE.MeshStandardMaterial({
+    // ─── 2. OUTER CRUST (3/4 sphere) ──────────────────────────────────────
+    const crustGeo = new THREE.SphereGeometry(100.8, 64, 64, 0, Math.PI * 1.5);
+    const crustMat = new THREE.MeshStandardMaterial({
       map: earthTex,
-      roughness: 0.8,
+      roughness: 0.7,
       metalness: 0.1,
-      side: THREE.DoubleSide
+      side: THREE.DoubleSide,
     });
+    const crustMesh = new THREE.Mesh(crustGeo, crustMat);
+    crustMesh.rotation.y = -Math.PI / 2;
+    crustMesh.renderOrder = 0;
+    group.add(crustMesh);
 
-    const earthMesh = new THREE.Mesh(earthGeo, earthMat);
-    earthMesh.rotation.y = -Math.PI / 2; // Orient correctly
-    group.add(earthMesh);
+    // ─── 3. INNER CORE (solid, bright, visible) ──────────────────────────
+    const innerCoreMat = new THREE.MeshStandardMaterial({
+      color: 0xfffec8,
+      emissive: 0xffaa00,
+      emissiveIntensity: 0.6,
+      roughness: 0.2,
+      metalness: 0.8,
+      side: THREE.DoubleSide,
+    });
+    const innerCore = new THREE.Mesh(
+      new THREE.SphereGeometry(28, 48, 48, 0, Math.PI * 1.5),
+      innerCoreMat
+    );
+    innerCore.rotation.y = -Math.PI / 2;
+    innerCore.renderOrder = 1;
+    group.add(innerCore);
 
-    // 3. Create the flat cutaway faces (two flat half-discs capping the open slice)
-    // One face at phi = 0, one face at phi = 1.5 * PI.
-    // Center is at 0,0,0. Radius is 99.6.
-    
-    // Let's generate a high-res canvas texture showing the concentric interior layers
+    // ─── 4. OUTER CORE (liquid orange, glowing) ──────────────────────────
+    const outerCoreMat = new THREE.MeshStandardMaterial({
+      color: 0xff851b,
+      emissive: 0xff5500,
+      emissiveIntensity: 0.3,
+      transparent: true,
+      opacity: 0.9,
+      roughness: 0.3,
+      side: THREE.DoubleSide,
+    });
+    const outerCore = new THREE.Mesh(
+      new THREE.SphereGeometry(55, 48, 48, 0, Math.PI * 1.5),
+      outerCoreMat
+    );
+    outerCore.rotation.y = -Math.PI / 2;
+    outerCore.renderOrder = 1;
+    group.add(outerCore);
+
+    // ─── 5. MANTLE (semi-transparent) ────────────────────────────────────
+    const mantleMat = new THREE.MeshStandardMaterial({
+      color: 0xff4136,
+      transparent: true,
+      opacity: 0.4,
+      roughness: 0.8,
+      side: THREE.DoubleSide,
+    });
+    const mantle = new THREE.Mesh(
+      new THREE.SphereGeometry(89, 48, 48, 0, Math.PI * 1.5),
+      mantleMat
+    );
+    mantle.rotation.y = -Math.PI / 2;
+    mantle.renderOrder = 1;
+    group.add(mantle);
+
+    // ─── 6. FLAT CUTAWAY FACE (drawn LAST so it's on top) ────────────────
     const canvas = document.createElement("canvas");
-    canvas.width = 1024;
-    canvas.height = 1024;
+    canvas.width = 2048;
+    canvas.height = 2048;
     const ctx = canvas.getContext("2d");
 
-    const cx = 512;
-    const cy = 512;
+    const cx = 1024, cy = 1024;
 
-    // Clear background
-    ctx.fillStyle = "rgba(0,0,0,0)";
-    ctx.fillRect(0, 0, 1024, 1024);
+    // Dark background
+    ctx.fillStyle = "#0a0e1a";
+    ctx.fillRect(0, 0, 2048, 2048);
 
-    // Draw Crust (brown outer ring)
-    ctx.beginPath();
-    ctx.arc(cx, cy, 508, 0, Math.PI * 2);
-    ctx.fillStyle = "#5c3a21"; // Brown Crust
-    ctx.fill();
+    // Draw concentric rings
+    const rings = [
+      { radius: 280, color: "#fffec8", label: "Inner Core" },
+      { radius: 550, color: "#ff851b", label: "Outer Core" },
+      { radius: 890, color: "#ff4136", label: "Mantle" },
+      { radius: 990, color: "#5c3a21", label: "Crust" },
+    ];
 
-    // Draw Mantle (bright red-orange)
-    ctx.beginPath();
-    ctx.arc(cx, cy, 498, 0, Math.PI * 2);
-    ctx.fillStyle = "#ff4136"; 
-    ctx.fill();
-
-    // Draw Outer Core (molten orange-yellow)
-    ctx.beginPath();
-    ctx.arc(cx, cy, 300, 0, Math.PI * 2);
-    ctx.fillStyle = "#ff851b";
-    ctx.fill();
-
-    // Draw Inner Core (solid bright yellow/white)
-    ctx.beginPath();
-    ctx.arc(cx, cy, 150, 0, Math.PI * 2);
-    ctx.fillStyle = "#fffec8";
-    ctx.fill();
-
-    // Add glowing rings inside the core
-    ctx.strokeStyle = "rgba(255, 255, 255, 0.4)";
-    ctx.lineWidth = 4;
-    ctx.beginPath();
-    ctx.arc(cx, cy, 148, 0, Math.PI * 2);
-    ctx.stroke();
-
-    const coreTexture = new THREE.CanvasTexture(canvas);
-    coreTexture.colorSpace = THREE.SRGBColorSpace;
-
-    const coreMat = new THREE.MeshBasicMaterial({
-      map: coreTexture,
-      side: THREE.DoubleSide
+    rings.forEach(({ radius, color }) => {
+      ctx.beginPath();
+      ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+      ctx.fillStyle = color;
+      ctx.fill();
+      ctx.strokeStyle = "rgba(255,255,255,0.15)";
+      ctx.lineWidth = 2;
+      ctx.stroke();
     });
 
-    // Face 1: Plane at Z = 0 (extends along X >= 0)
-    // We create a half-circle geometry
-    const face1Geo = new THREE.RingGeometry(0, 99.6, 64, 1, 0, Math.PI);
-    const face1Mesh = new THREE.Mesh(face1Geo, coreMat);
-    // Align face to cap the X-axis cut
-    face1Mesh.rotation.x = Math.PI / 2;
-    face1Mesh.rotation.y = Math.PI / 2;
-    group.add(face1Mesh);
+    // Labels on the cut face
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.font = "bold 36px Inter, sans-serif";
+    ctx.fillStyle = "rgba(255,255,255,0.95)";
+    ctx.fillText("Inner Core", cx, cy - 50);
+    ctx.font = "22px Inter, sans-serif";
+    ctx.fillStyle = "rgba(255,200,100,0.8)";
+    ctx.fillText("5,400°C · Solid iron-nickel", cx, cy + 50);
 
-    // Face 2: Plane at X = 0 (extends along Z >= 0)
-    const face2Geo = new THREE.RingGeometry(0, 99.6, 64, 1, 0, Math.PI);
-    const face2Mesh = new THREE.Mesh(face2Geo, coreMat);
-    // Align face to cap the Z-axis cut
-    face2Mesh.rotation.x = Math.PI / 2;
-    group.add(face2Mesh);
+    ctx.font = "bold 24px Inter, sans-serif";
+    ctx.fillStyle = "rgba(255,255,255,0.6)";
+    ctx.fillText("Outer Core", 760, 380);
+    ctx.fillText("Mantle", 1120, 230);
 
-    // Angled orientation so student can see both the outside continents and the cutaway inside
-    group.rotation.y = Math.PI / 3;
-    group.rotation.x = Math.PI / 8;
+    const faceTexture = new THREE.CanvasTexture(canvas);
+    faceTexture.colorSpace = THREE.SRGBColorSpace;
 
-    // 4. Add subtle animation to rotate slowly so all angles are visible
+    const faceMat = new THREE.MeshBasicMaterial({
+      map: faceTexture,
+      side: THREE.DoubleSide,
+      transparent: true,
+    });
+
+    const faceGeo = new THREE.RingGeometry(0, 100.8, 64, 1, 0, Math.PI);
+    
+    const face1 = new THREE.Mesh(faceGeo, faceMat);
+    face1.rotation.x = -Math.PI / 2;
+    face1.rotation.y = -Math.PI / 2;
+    face1.renderOrder = 10; // ← RENDER ON TOP
+    group.add(face1);
+
+    const face2 = new THREE.Mesh(faceGeo.clone(), faceMat);
+    face2.rotation.x = -Math.PI / 2;
+    face2.renderOrder = 10; // ← RENDER ON TOP
+    group.add(face2);
+
+    // ─── 7. POSITION & TILT ──────────────────────────────────────────────
+    group.rotation.x = Math.PI / 12;
+    group.rotation.y = Math.PI / 4;
+
+    // ─── 8. ANIMATION ──────────────────────────────────────────────────────
     let reqId = null;
     const animate = () => {
-      if (groupRef.current) {
-        groupRef.current.rotation.y += 0.0018;
+      if (groupRef.current && isActive) {
+        groupRef.current.rotation.y += 0.0012;
+        const pulse = 1 + 0.003 * Math.sin(performance.now() / 2000);
+        innerCore.scale.set(pulse, pulse, pulse);
+        innerCore.material.emissiveIntensity = 0.4 + 0.2 * Math.sin(performance.now() / 1500);
       }
       reqId = requestAnimationFrame(animate);
     };
@@ -131,14 +435,23 @@ export default function EarthCoreLayer({ scene }) {
 
     return () => {
       if (reqId) cancelAnimationFrame(reqId);
-      scene.remove(group);
-      earthGeo.dispose();
-      earthMat.dispose();
+      if (groupRef.current && scene) {
+        scene.remove(groupRef.current);
+        groupRef.current = null;
+      }
+      // Cleanup...
+      crustGeo.dispose();
+      crustMat.dispose();
       earthTex.dispose();
-      face1Geo.dispose();
-      face2Geo.dispose();
-      coreMat.dispose();
-      coreTexture.dispose();
+      mantle.geometry.dispose();
+      mantle.material.dispose();
+      outerCore.geometry.dispose();
+      outerCore.material.dispose();
+      innerCore.geometry.dispose();
+      innerCore.material.dispose();
+      faceGeo.dispose();
+      faceMat.dispose();
+      faceTexture.dispose();
     };
   }, [isActive, scene]);
 
