@@ -89,7 +89,7 @@ export default function LayersPanel() {
             transition={{ duration: 0.15 }}
             className="absolute right-0 mt-2 w-80 rounded-2xl border border-white/10
                        bg-slate-950/94 shadow-2xl backdrop-blur-2xl z-[60] overflow-hidden
-                       max-h-[calc(100vh-110px)] flex flex-col"
+                       max-h-[calc(100vh-440px)] flex flex-col"
           >
             {/* Header */}
             <div className="flex items-center justify-between px-4 pt-4 pb-3 border-b border-white/6 shrink-0">
