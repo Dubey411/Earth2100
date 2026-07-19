@@ -88,10 +88,11 @@ export default function LayersPanel() {
             exit={{ opacity: 0, y: 10, scale: 0.96 }}
             transition={{ duration: 0.15 }}
             className="absolute right-0 mt-2 w-80 rounded-2xl border border-white/10
-                       bg-slate-950/94 shadow-2xl backdrop-blur-2xl z-[60] overflow-hidden"
+                       bg-slate-950/94 shadow-2xl backdrop-blur-2xl z-[60] overflow-hidden
+                       max-h-[calc(100vh-110px)] flex flex-col"
           >
             {/* Header */}
-            <div className="flex items-center justify-between px-4 pt-4 pb-3 border-b border-white/6">
+            <div className="flex items-center justify-between px-4 pt-4 pb-3 border-b border-white/6 shrink-0">
               <div className="flex items-center gap-2">
                 <Layers size={14} className="text-cyan-400" />
                 <span className="text-xs font-bold uppercase tracking-wider text-white">Globe Overlays</span>
@@ -102,7 +103,7 @@ export default function LayersPanel() {
               </button>
             </div>
 
-            <div className="p-3 space-y-3">
+            <div className="p-3 space-y-3 overflow-y-auto flex-1 min-h-0 [scrollbar-width:thin] [scrollbar-color:rgba(255,255,255,0.1)_transparent]">
 
               {/* ── Section: Independent Toggles ── */}
               <div>
