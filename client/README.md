@@ -1,4 +1,4 @@
-# 🌍 Earth 2100 — Climate Lens
+# 🌍 Earth 2100
 
 > **An interactive 3-D Earth intelligence platform that visualises real-world climate signals, regional hotspots, and planetary futures — rendered in the browser with WebGL shaders and live GeoJSON overlays.**
 

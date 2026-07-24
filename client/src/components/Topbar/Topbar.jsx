@@ -56,14 +56,14 @@ export default function Topbar() {
                    bg-[#020611]/82 backdrop-blur-2xl border-b border-white/8"
       >
         {/* Brand */}
-        <a href="#" className="flex items-center gap-3 shrink-0" aria-label="Climate Lens home">
+        <a href="#" className="flex items-center gap-3 shrink-0" aria-label="Earth 2100 home">
           <div className="w-11 h-11 grid place-items-center rounded-[14px] border border-cyan-400/50
                           bg-cyan-400/8 shadow-[0_0_24px_rgba(0,234,255,0.18)]">
             <Globe2 size={22} className="text-cyan-400" />
           </div>
           <div>
             <div className="font-black text-[16px] tracking-wider uppercase leading-none text-white">
-              Climate Lens
+              Earth 2100
             </div>
             <div className="text-[10px] text-slate-500 mt-0.5 leading-none tracking-wide">
               Earth Intelligence Platform

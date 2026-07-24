@@ -14,7 +14,7 @@ app.use(express.json());
 app.get('/', (req, res) => {
   res.json({
     status: 'online',
-    message: 'Welcome to the Earth 2100 - Climate Lens API',
+    message: 'Welcome to the Earth 2100 API',
     timestamp: new Date().toISOString()
   });
 });

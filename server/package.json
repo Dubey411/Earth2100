@@ -1,7 +1,7 @@
 {
   "name": "earth-2100-server",
   "version": "1.0.0",
-  "description": "Backend REST API for Earth 2100 - Climate Lens Platform",
+  "description": "Backend REST API for Earth 2100",
   "main": "src/index.js",
   "type": "module",
   "scripts": {

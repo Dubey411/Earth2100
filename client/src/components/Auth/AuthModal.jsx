@@ -77,7 +77,7 @@ export default function AuthModal({ isOpen, onClose }) {
             <div className="relative z-10 flex items-center justify-between border-b border-white/6 pb-4">
               <div>
                 <h2 className="text-lg font-bold tracking-wider text-white uppercase">
-                  {isRegister ? "Join Climate Lens" : "Access Platform"}
+                  {isRegister ? "Join Earth 2100" : "Access Platform"}
                 </h2>
                 <p className="text-[11px] text-slate-400 mt-1">
                   {isRegister ? "Create your credentials" : "Enter your access credentials"}
