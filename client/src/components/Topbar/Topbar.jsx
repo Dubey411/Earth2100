@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Globe2, Search, Moon, ChevronDown, LogOut, LogIn, User } from "lucide-react";
+import { Search, Moon, ChevronDown, LogOut, LogIn, User } from "lucide-react";
 import useAuthStore from "../../store/useAuthStore";
 import AuthModal from "../Auth/AuthModal";
 import NotificationPanel from "../Notifications/NotificationPanel";
@@ -56,19 +56,12 @@ export default function Topbar() {
                    bg-[#020611]/82 backdrop-blur-2xl border-b border-white/8"
       >
         {/* Brand */}
-        <a href="#" className="flex items-center gap-3 shrink-0" aria-label="Earth 2100 home">
-          <div className="w-11 h-11 grid place-items-center rounded-[14px] border border-cyan-400/50
-                          bg-cyan-400/8 shadow-[0_0_24px_rgba(0,234,255,0.18)]">
-            <Globe2 size={22} className="text-cyan-400" />
-          </div>
-          <div>
-            <div className="font-black text-[16px] tracking-wider uppercase leading-none text-white">
-              Earth 2100
-            </div>
-            <div className="text-[10px] text-slate-500 mt-0.5 leading-none tracking-wide">
-              Earth Intelligence Platform
-            </div>
-          </div>
+        <a href="#" className="flex items-center shrink-0" aria-label="Earth 2100 home">
+          <img
+            src="/logo.png"
+            alt="Earth 2100"
+            className="h-11 w-auto object-contain drop-shadow-[0_0_10px_rgba(0,234,255,0.35)]"
+          />
         </a>
 
         {/* Search */}
