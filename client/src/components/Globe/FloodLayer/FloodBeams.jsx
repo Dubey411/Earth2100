@@ -1,23 +1,20 @@
 /**
  * FloodBeams.jsx — Glowing vertical light columns rising from each flood hotspot.
  *
- * Uses direct 3D world-space positioning (no UV shader alignment issues).
+ * Accepts a `hotspots` prop (array of {lat, lng, label, id}) so it can render
+ * beams for any set of locations — static fallback or live GDACS flood events.
+ *
  * Each beam is a CylinderGeometry centred at the hotspot, oriented radially
  * outward from the Earth's centre. The beam pulses in height and opacity.
  *
- * Why this DEFINITELY renders in the right place:
- *   latLngToWorld() converts hotspot coordinates to the same Three.js world
- *   space used by react-globe.gl (accounts for the -PI/2 Y rotation).
- *
- * 5 beams, one per hotspot. Each has a slightly different phase.
  * Height: 0 → 12 units above surface over 4 seconds, then breathes.
+ * The Y-scale is dynamically driven by real-time Open-Meteo precipitation.
  * Colour: Electric cyan (#00E5FF) with additive glow.
  *
  * Fade : 800ms in, 500ms out
  */
 import { useEffect } from 'react'
 import * as THREE from 'three'
-import { FLOOD_HOTSPOTS } from './constants'
 
 const GLOBE_R     = 100.0
 const BEAM_RADIUS = 1.8      // cylinder radius in Three.js units
@@ -67,12 +64,14 @@ const BEAM_FRAG = /* glsl */`
   }
 `
 
-export default function FloodBeams({ globe, scene, realtimeData, registerAnimated }) {
+export default function FloodBeams({ globe, scene, realtimeData, registerAnimated, hotspots = [] }) {
   useEffect(() => {
-    if (!globe) return
+    if (!globe || hotspots.length === 0) return
 
-    const beams = FLOOD_HOTSPOTS.map(([lat, lng], idx) => {
-      const coords = globe.getCoords(lat, lng, 0.003)
+    const count = hotspots.length
+
+    const beams = hotspots.map((h, idx) => {
+      const coords    = globe.getCoords(h.lat, h.lng, 0.003)
       const surfacePos = new THREE.Vector3(coords.x, coords.y, coords.z)
       const radialDir  = surfacePos.clone().normalize()    // outward direction
 
@@ -83,7 +82,7 @@ export default function FloodBeams({ globe, scene, realtimeData, registerAnimate
         fragmentShader: BEAM_FRAG,
         uniforms: {
           uOpacity: { value: 0.0 },
-          uPhase:   { value: idx / FLOOD_HOTSPOTS.length },
+          uPhase:   { value: idx / Math.max(count, 1) },
         },
         transparent: true,
         depthWrite:  false,
@@ -95,8 +94,8 @@ export default function FloodBeams({ globe, scene, realtimeData, registerAnimate
 
       // ── Position: surface + half beam height along radial direction ────────
       // CylinderGeometry default axis is +Y; align it to radialDir
-      const up      = new THREE.Vector3(0, 1, 0)
-      const quat    = new THREE.Quaternion().setFromUnitVectors(up, radialDir)
+      const up   = new THREE.Vector3(0, 1, 0)
+      const quat = new THREE.Quaternion().setFromUnitVectors(up, radialDir)
       mesh.quaternion.copy(quat)
 
       // Centre the beam base ON the surface: offset by half height
@@ -108,8 +107,8 @@ export default function FloodBeams({ globe, scene, realtimeData, registerAnimate
       // Set identification metadata for click handler
       mesh.userData = {
         floodType: 'beam',
-        name: '3D Precipitation Beacon',
-        index: idx
+        name:      '3D Precipitation Beacon',
+        index:     idx,
       }
 
       scene.add(mesh)
@@ -120,7 +119,7 @@ export default function FloodBeams({ globe, scene, realtimeData, registerAnimate
     const startMs = performance.now()
 
     const unregister = registerAnimated((t) => {
-      const elapsed = performance.now() - startMs
+      const elapsed    = performance.now() - startMs
       const globalFade = Math.min(elapsed / FADE_IN_MS, 1.0)
 
       beams.forEach(({ mesh, mat, phase }, idx) => {
@@ -129,7 +128,7 @@ export default function FloodBeams({ globe, scene, realtimeData, registerAnimate
         if (realtimeData && realtimeData[idx]) {
           rainVal = realtimeData[idx].precipitation
         }
-        
+
         // Dynamically scale Y height based on live precipitation amount (0.0 to 10.0 mm)
         // Min scale is 0.55 (always visible), max scale is 2.20 (active rain)
         const targetScaleY = 0.55 + 1.65 * Math.min(rainVal / 10.0, 1.0)
@@ -161,7 +160,7 @@ export default function FloodBeams({ globe, scene, realtimeData, registerAnimate
       }
       requestAnimationFrame(fadeOut)
     }
-  }, [globe, scene, realtimeData]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [globe, scene, realtimeData, hotspots]) // eslint-disable-line react-hooks/exhaustive-deps
 
   return null
 }
