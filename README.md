@@ -103,18 +103,6 @@
 
 ---
 
-### 📍 5. Regional Hotspot Inspector & Live Telemetry
-*Click any regional pin or event marker to fly the camera to the coordinate, opening a detailed cybernetic telemetry sidebar with historical trends and live sensor metrics.*
-
-```markdown
-![Regional Hotspot Inspector](docs/images/hotspot-inspector.png)
-```
-<div align="center">
-  <img src="docs/images/hotspot-inspector.png" alt="Hotspot Inspector" width="850" fallback="https://via.placeholder.com/850x450/020611/00e5ff?text=Hotspot+Inspector+Sidebar+%26+Live+Readout" />
-</div>
-
----
-
 ## ✨ Features Breakdown
 
 ### 🌐 3D Interactive WebGL Globe

@@ -16,7 +16,6 @@ This directory contains the React 18 + Vite frontend for **Earth 2100**, an inte
 - `../docs/images/signal-solar-storm.png` — Solar Flares & Auroras
 - `../docs/images/layers-panel.png` — Layer Manager
 - `../docs/images/timeline-slider.png` — Planetary Futures (2025–2100)
-- `../docs/images/hotspot-inspector.png` — Regional Hotspot Inspector
 
 ---
 
