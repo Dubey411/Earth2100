@@ -1,7 +1,13 @@
 /**
- * StormVeil.jsx — Dark storm atmosphere veil over flood hotspots.
+ * StormVeil.jsx — Dark storm atmosphere veil over flood hotspots (v2, live-data ready).
+ *
+ * Accepts a `hotspots` prop (array of {lat, lng}) so it renders cloud cover at
+ * live GDACS flood locations or static fallback positions.
  *
  * Hooked to real-time NASA GPM IMERG Precipitation satellite feed.
+ *
+ * The GLSL shader uses uniform vec2 uHotspots[5] (fixed compile-time size).
+ * We always normalise to exactly 5 slots: truncate if more, pad [0,0] if fewer.
  *
  * Radius  : 100.85
  * Blending: NormalBlending (alpha composite, not additive)
@@ -9,11 +15,11 @@
  */
 import { useEffect } from 'react'
 import * as THREE from 'three'
-import { FLOOD_HOTSPOTS } from './constants'
 
-const VEIL_RADIUS = 100.85
-const FADE_IN_MS  = 900
-const FADE_OUT_MS = 500
+const VEIL_RADIUS  = 100.85
+const FADE_IN_MS   = 900
+const FADE_OUT_MS  = 500
+const SHADER_SLOTS = 5   // GLSL compile-time constant
 
 const VERT = /* glsl */`
   varying vec2 vUv;
@@ -98,9 +104,17 @@ const FRAG = /* glsl */`
   }
 `
 
-export default function StormVeil({ scene, lightningRef, precipTexture, registerAnimated }) {
+/** Normalise any hotspot array to exactly SHADER_SLOTS THREE.Vector2 items. */
+function toHotspotUniforms(hotspots) {
+  return Array.from({ length: SHADER_SLOTS }, (_, i) => {
+    const h = hotspots[i]
+    return h ? new THREE.Vector2(h.lat, h.lng) : new THREE.Vector2(0, 0)
+  })
+}
+
+export default function StormVeil({ scene, lightningRef, precipTexture, registerAnimated, hotspots = [] }) {
   useEffect(() => {
-    const hotspotUniforms = FLOOD_HOTSPOTS.map(([lat, lng]) => new THREE.Vector2(lat, lng))
+    const hotspotUniforms = toHotspotUniforms(hotspots)
 
     const material = new THREE.ShaderMaterial({
       vertexShader:   VERT,
@@ -126,16 +140,16 @@ export default function StormVeil({ scene, lightningRef, precipTexture, register
     mesh.renderOrder   = 6
 
     // ✅ Set identify metadata for raycasting click handler
-    mesh.userData = { 
-      floodType: 'veil', 
-      name: 'GPM IMERG Storm Veil' 
+    mesh.userData = {
+      floodType: 'veil',
+      name: 'GPM IMERG Storm Veil'
     }
 
     scene.add(mesh)
 
     // Sync precipitation texture when it loads asynchronously
     if (precipTexture) {
-      material.uniforms.uPrecipMap.value = precipTexture
+      material.uniforms.uPrecipMap.value    = precipTexture
       material.uniforms.uHasPrecipMap.value = 1.0
     }
 
@@ -145,10 +159,10 @@ export default function StormVeil({ scene, lightningRef, precipTexture, register
       material.uniforms.uOpacity.value   = Math.min((performance.now() - startMs) / FADE_IN_MS, 1.0)
       material.uniforms.uTime.value      = t
       material.uniforms.uLightning.value = lightningRef.current.value
-      
+
       // Keep texture synced in loop just in case
       if (precipTexture && material.uniforms.uHasPrecipMap.value < 0.5) {
-        material.uniforms.uPrecipMap.value = precipTexture
+        material.uniforms.uPrecipMap.value    = precipTexture
         material.uniforms.uHasPrecipMap.value = 1.0
       }
     })
@@ -170,8 +184,7 @@ export default function StormVeil({ scene, lightningRef, precipTexture, register
       }
       requestAnimationFrame(fadeOut)
     }
-  }, [scene, precipTexture]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [scene, precipTexture, hotspots]) // eslint-disable-line react-hooks/exhaustive-deps
 
   return null
 }
-
