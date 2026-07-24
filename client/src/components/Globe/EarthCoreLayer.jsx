@@ -140,6 +140,7 @@ export default function EarthCoreLayer({ scene }) {
     ctx.fillText("Outer Core", cx - 215, cy - 168);
     ctx.font = "14px sans-serif"; ctx.fillStyle = "rgba(255,170,100,.75)";
     ctx.fillText("Liquid Fe-Ni", cx - 215, cy - 146);
+    
 
     ctx.font = "bold 19px sans-serif"; ctx.fillStyle = "rgba(255,160,130,.85)";
     ctx.fillText("Mantle", cx + 38, cy - 368);
