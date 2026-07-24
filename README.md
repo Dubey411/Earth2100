@@ -70,9 +70,9 @@
       <br/><sub>WAQI / CPCB live PM2.5 monitoring and toxic haze domes</sub>
     </td>
     <td width="50%" align="center">
-      <b>🧊 Cryosphere Loss & Icebreak</b><br/><br/>
-      <img src="docs/images/signal-cryosphere.png" alt="Cryosphere Layer" width="400" fallback="https://via.placeholder.com/400x230/020611/48cae4?text=Ice+Melting+%26+Breakaway" />
-      <br/><sub>Polar ice cap retreat and dynamic iceberg detachment</sub>
+      <b>🌊 ENSO / El Niño Oscillation</b><br/><br/>
+      <img src="docs/images/signal-enso.png" alt="ENSO Layer" width="400" fallback="https://via.placeholder.com/400x230/020611/00e5ff?text=ENSO+El+Nino+Arc+Streams" />
+      <br/><sub>Equatorial Pacific warm currents and animated arc flow streams</sub>
     </td>
   </tr>
 </table>
@@ -127,8 +127,7 @@
 * **Storm Activity**: Real-time tracking of tropical cyclones and hurricanes from GDACS, rendered with 3-arm spiral particle systems and storm eyewalls.
 * **Solar Storms & Space Weather**: Interactive solar flare intensity scrubber simulating coronal mass ejections, magnetic field line deflections, and polar auroral ovals.
 * **Air Pollution**: Multi-tier live AQI integration fetching real-time PM2.5 and pollutant data from **WAQI** (World Air Quality Index) and **CPCB** (India Ministry of Environment).
-* **Heat Stress**: Custom GLSL shader with 5-octave Simplex Noise turbulence and 240+ country GeoJSON land masking.
-* **Cryosphere & Ice Loss**: Dynamic iceberg breakaway physics simulation at Antarctic and Greenland margins.
+* **ENSO / El Niño Oscillation**: Animated Pacific equatorial ocean current streams, sea surface temperature anomalies, and atmospheric circulation dynamics.
 
 ### 🔭 Planetary Futures Timeline (2025 – 2100)
 Scrub from year 2025 to 2100 across three IPCC climate projection pathways:
