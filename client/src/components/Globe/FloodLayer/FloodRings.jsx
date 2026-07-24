@@ -1,5 +1,11 @@
 /**
- * FloodRings.jsx — Expanding cyan shock rings (v3, high visibility).
+ * FloodRings.jsx — Expanding cyan shock rings (v4, live-data ready).
+ *
+ * Accepts a `hotspots` prop (array of {lat, lng}) so it renders rings at
+ * live GDACS flood locations or static fallback positions.
+ *
+ * The GLSL shader uses uniform vec2 uHotspots[5] (fixed compile-time size).
+ * We always normalise to exactly 5 slots: truncate if more, pad [0,0] if fewer.
  *
  * Key improvements:
  *  - Much wider rings (1.2° width) and higher alpha (0.85)
@@ -14,11 +20,11 @@
  */
 import { useEffect } from 'react'
 import * as THREE from 'three'
-import { FLOOD_HOTSPOTS } from './constants'
 
 const RIPPLE_RADIUS = 100.70
 const FADE_IN_MS    = 600
 const FADE_OUT_MS   = 400
+const SHADER_SLOTS  = 5   // GLSL compile-time constant
 
 const VERT = /* glsl */`
   varying vec2 vUv;
@@ -88,9 +94,17 @@ const FRAG = /* glsl */`
   }
 `
 
-export default function FloodRings({ scene, registerAnimated }) {
+/** Normalise any hotspot array to exactly SHADER_SLOTS THREE.Vector2 items. */
+function toHotspotUniforms(hotspots) {
+  return Array.from({ length: SHADER_SLOTS }, (_, i) => {
+    const h = hotspots[i]
+    return h ? new THREE.Vector2(h.lat, h.lng) : new THREE.Vector2(0, 0)
+  })
+}
+
+export default function FloodRings({ scene, registerAnimated, hotspots = [] }) {
   useEffect(() => {
-    const hotspotUniforms = FLOOD_HOTSPOTS.map(([lat, lng]) => new THREE.Vector2(lat, lng))
+    const hotspotUniforms = toHotspotUniforms(hotspots)
 
     const material = new THREE.ShaderMaterial({
       vertexShader:   VERT,
@@ -142,7 +156,7 @@ export default function FloodRings({ scene, registerAnimated }) {
       }
       requestAnimationFrame(fadeOut)
     }
-  }, [scene]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [scene, hotspots]) // eslint-disable-line react-hooks/exhaustive-deps
 
   return null
 }
