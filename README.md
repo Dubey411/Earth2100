@@ -19,18 +19,11 @@
 
 ## 📸 Visual Showcase & Demo Gallery
 
-> [!NOTE]  
-> Below are designated spaces for platform feature screenshots and recordings. Place your image files in the `docs/images/` folder or replace the image paths below.
-
 ### 🌐 1. Default Earth View (3D Globe)
 *Photorealistic WebGL globe with high-resolution NASA Blue Marble textures, bump-mapped topology, city night lights, and atmospheric cloud shells.*
 
-```markdown
-![Default Earth View](docs/images/default-earth.png)
-```
 <div align="center">
-  <!-- Replace with actual image path when available -->
-  <img src="docs/images/default-earth.png" alt="Default Earth View" width="850" fallback="https://via.placeholder.com/850x450/020611/00e5ff?text=Default+Earth+3D+Globe+View" />
+  <img src="docs/images/default-earth.png" alt="Default Earth View" width="850" />
 </div>
 
 ---
@@ -42,37 +35,37 @@
   <tr>
     <td width="50%" align="center">
       <b>🔥 Heat Stress & Temperature Gradient</b><br/><br/>
-      <img src="docs/images/signal-heat-stress.png" alt="Heat Stress Layer" width="400" fallback="https://via.placeholder.com/400x230/020611/ff3300?text=Heat+Stress+Shader+Overlay" />
-      <br/><sub>Latitude-based thermal gradient with FBM noise turbulence</sub>
+      <img src="docs/images/signal-heat-stress.png" alt="Heat Stress Layer" width="400" /><br/>
+      <sub>Latitude-based thermal gradient with FBM noise turbulence</sub>
     </td>
     <td width="50%" align="center">
       <b>🌊 Flood Risk & Inundation Beams</b><br/><br/>
-      <img src="docs/images/signal-flood-risk.png" alt="Flood Risk Layer" width="400" fallback="https://via.placeholder.com/400x230/020611/00e5ff?text=Flood+Risk+GDACS+Live+Beams" />
-      <br/><sub>Real-time GDACS flood events with 3D light beacons</sub>
+      <img src="docs/images/signal-flood-risk.png" alt="Flood Risk Layer" width="400" /><br/>
+      <sub>Real-time GDACS flood events with 3D light beacons</sub>
     </td>
   </tr>
   <tr>
     <td width="50%" align="center">
       <b>🌀 Tropical Cyclones & Storm Basins</b><br/><br/>
-      <img src="docs/images/signal-storms.png" alt="Storm Layer" width="400" fallback="https://via.placeholder.com/400x230/020611/00b4d8?text=Storm+Layer+Cyclone+Vortex" />
-      <br/><sub>Spinning 3-arm spiral particle vortices & rain bands</sub>
+      <img src="docs/images/signal-storms.png" alt="Storm Layer" width="400" /><br/>
+      <sub>Spinning 3-arm spiral particle vortices & rain bands</sub>
     </td>
     <td width="50%" align="center">
       <b>⚡ Solar Storms & Magnetosphere</b><br/><br/>
-      <img src="docs/images/signal-solar-storm.png" alt="Solar Storm Layer" width="400" fallback="https://via.placeholder.com/400x230/020611/cc66ff?text=Solar+Storm+%26+Aurora+Belts" />
-      <br/><sub>Coronal mass ejections, magnetic shield & polar auroras</sub>
+      <img src="docs/images/signal-solar-storm.png" alt="Solar Storm Layer" width="400" /><br/>
+      <sub>Coronal mass ejections, magnetic shield & polar auroras</sub>
     </td>
   </tr>
   <tr>
     <td width="50%" align="center">
       <b>🏭 Air Pollution & Smog Domes</b><br/><br/>
-      <img src="docs/images/signal-air-pollution.png" alt="Air Pollution Layer" width="400" fallback="https://via.placeholder.com/400x230/020611/9370db?text=Air+Pollution+WAQI+AQI+Plumes" />
-      <br/><sub>WAQI / CPCB live PM2.5 monitoring and toxic haze domes</sub>
+      <img src="docs/images/signal-air-pollution.png" alt="Air Pollution Layer" width="400" /><br/>
+      <sub>WAQI / CPCB live PM2.5 monitoring and toxic haze domes</sub>
     </td>
     <td width="50%" align="center">
       <b>🌊 ENSO / El Niño Oscillation</b><br/><br/>
-      <img src="docs/images/signal-enso.png" alt="ENSO Layer" width="400" fallback="https://via.placeholder.com/400x230/020611/00e5ff?text=ENSO+El+Nino+Arc+Streams" />
-      <br/><sub>Equatorial Pacific warm currents and animated arc flow streams</sub>
+      <img src="docs/images/signal-enso.png" alt="ENSO Layer" width="400" /><br/>
+      <sub>Equatorial Pacific warm currents and animated arc flow streams</sub>
     </td>
   </tr>
 </table>
@@ -82,11 +75,8 @@
 ### 🎛️ 3. Layers & Control Panel
 *Interactive layer manager allowing users to toggle visual overlays, adjust signal intensity (0–100%), and filter climate telemetry.*
 
-```markdown
-![Layers Control Panel](docs/images/layers-panel.png)
-```
 <div align="center">
-  <img src="docs/images/layers-panel.png" alt="Layers Panel" width="850" fallback="https://via.placeholder.com/850x400/020611/00e5ff?text=Interactive+Layers+Control+Panel" />
+  <img src="docs/images/layers-panel.png" alt="Layers Panel" width="850" />
 </div>
 
 ---
@@ -94,11 +84,8 @@
 ### 🔭 4. Planetary Futures Timeline (2025 → 2100)
 *Scrub through IPCC-aligned environmental scenarios and observe real-time planetary transformations in sea level rise, ice coverage, and thermal stress.*
 
-```markdown
-![Planetary Futures Timeline](docs/images/timeline-slider.png)
-```
 <div align="center">
-  <img src="docs/images/timeline-slider.png" alt="Timeline Slider" width="850" fallback="https://via.placeholder.com/850x400/020611/ffaa00?text=Planetary+Futures+Timeline+Scrubber+(2025+-+2100)" />
+  <img src="docs/images/timeline-slider.png" alt="Timeline Slider" width="850" />
 </div>
 
 ---
@@ -115,6 +102,7 @@
 * **Storm Activity**: Real-time tracking of tropical cyclones and hurricanes from GDACS, rendered with 3-arm spiral particle systems and storm eyewalls.
 * **Solar Storms & Space Weather**: Interactive solar flare intensity scrubber simulating coronal mass ejections, magnetic field line deflections, and polar auroral ovals.
 * **Air Pollution**: Multi-tier live AQI integration fetching real-time PM2.5 and pollutant data from **WAQI** (World Air Quality Index) and **CPCB** (India Ministry of Environment).
+* **Heat Stress**: Custom GLSL shader with 5-octave Simplex Noise turbulence and 240+ country GeoJSON land masking.
 * **ENSO / El Niño Oscillation**: Animated Pacific equatorial ocean current streams, sea surface temperature anomalies, and atmospheric circulation dynamics.
 
 ### 🔭 Planetary Futures Timeline (2025 – 2100)
@@ -153,7 +141,6 @@ Earth 2100/
 │   │   │   │   ├── SolarStormLayer/    # Solar Flares & Magnetic Shield
 │   │   │   │   ├── HeatMapLayer.jsx    # GLSL Thermal Shader
 │   │   │   │   └── TimelineLayers/     # Ice, Sea Level & Forest Transitions
-│   │   │   ├── Sidebar/         # Regional Hotspot Inspector
 │   │   │   ├── Topbar/          # Header Navigation & Branding
 │   │   │   ├── Layers/          # Layer Manager & Signal Toggles
 │   │   │   └── Futures/         # Planetary Futures Timeline Drawer
@@ -170,7 +157,7 @@ Earth 2100/
 │   └── package.json
 │
 ├── docs/                        # Screenshots & Documentation Assets
-│   └── images/                  # Place demo screenshots here
+│   └── images/                  # Demo screenshots location
 └── README.md                    # Root Documentation
 ```
 
