@@ -1,7 +1,14 @@
 /**
  * FloodPulse.jsx — Bright animated flood water blobs on globe surface.
  *
- * Key fixes vs previous WaterRise:
+ * Accepts a `hotspots` prop (array of {lat, lng}) so it renders blobs at
+ * live GDACS flood locations or static fallback positions.
+ *
+ * The GLSL shader uses uniform vec2 uHotspots[5] (fixed compile-time size).
+ * We always normalise to exactly 5 slots: truncate if more, pad [0,0] if fewer.
+ * The effect re-creates the mesh whenever hotspots change.
+ *
+ * Key design:
  *  - NormalBlending (not Additive) → blue color is VISIBLE on brown land
  *  - Higher alpha (0.55–0.75 range) → unmissable
  *  - Bright electric blue (#0080FF range) not dark navy
@@ -13,11 +20,11 @@
  */
 import { useEffect } from 'react'
 import * as THREE from 'three'
-import { FLOOD_HOTSPOTS } from './constants'
 
-const RADIUS     = 100.62
-const FADE_IN_MS = 1200
+const RADIUS      = 100.62
+const FADE_IN_MS  = 1200
 const FADE_OUT_MS = 600
+const SHADER_SLOTS = 5   // GLSL compile-time constant
 
 const VERT = /* glsl */`
   varying vec2 vUv;
@@ -99,9 +106,17 @@ const FRAG = /* glsl */`
   }
 `
 
-export default function FloodPulse({ scene, maskTexture, registerAnimated }) {
+/** Normalise any hotspot array to exactly SHADER_SLOTS THREE.Vector2 items. */
+function toHotspotUniforms(hotspots) {
+  return Array.from({ length: SHADER_SLOTS }, (_, i) => {
+    const h = hotspots[i]
+    return h ? new THREE.Vector2(h.lat, h.lng) : new THREE.Vector2(0, 0)
+  })
+}
+
+export default function FloodPulse({ scene, maskTexture, registerAnimated, hotspots = [] }) {
   useEffect(() => {
-    const hotspotUniforms = FLOOD_HOTSPOTS.map(([lat, lng]) => new THREE.Vector2(lat, lng))
+    const hotspotUniforms = toHotspotUniforms(hotspots)
 
     const material = new THREE.ShaderMaterial({
       vertexShader:   VERT,
@@ -153,7 +168,7 @@ export default function FloodPulse({ scene, maskTexture, registerAnimated }) {
       }
       requestAnimationFrame(fadeOut)
     }
-  }, [scene]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [scene, hotspots]) // eslint-disable-line react-hooks/exhaustive-deps
 
   return null
 }
