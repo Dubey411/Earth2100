@@ -24,7 +24,7 @@ import { addCloudLayer,
   createHeatLayer,
   updateHeatLayer,
 } from './sceneLayers.js'
-import worldCountries from '../../../geojson/world.geo.json/countries.geo.json'
+import worldCountries from '../../data/countries.geo.json'
 import FloodLayer       from './FloodLayer/index.jsx'
 import ElNinoLayer      from './ElNinoLayer/index.jsx'
 import StormLayer       from './StormLayer/index.jsx'

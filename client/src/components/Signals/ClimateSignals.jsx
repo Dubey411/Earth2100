@@ -36,7 +36,6 @@ const SIGNAL_HOTSPOT_COUNTS = {
 /* â”€â”€â”€ Animation labels â”€â”€ */
 const ANIM_LABELS = {
   heat:     'Thermal field · 8s',
-  flood:    'Ripple Â· 2.2s',
   flood:    'Ripple · 2.2s',
   wildfire: 'Flicker · 0.4s',
   drought:  'Diffuse · slow',

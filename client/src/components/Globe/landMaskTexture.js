@@ -1,5 +1,5 @@
 import * as THREE from 'three'
-import worldCountries from '../../../geojson/world.geo.json/countries.geo.json'
+import worldCountries from '../../data/countries.geo.json'
 
 export function createLandMaskTexture() {
   const canvas = document.createElement('canvas')
